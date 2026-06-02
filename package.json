@@ -8,5 +8,8 @@
     "postinstall": "npm run install-all",
     "build": "cd cadre-erp/frontend && npm run build",
     "start": "cd cadre-erp/backend && npm start"
+  },
+  "engines": {
+    "node": ">=20.19.0"
   }
 }
