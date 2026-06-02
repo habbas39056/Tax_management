@@ -4,6 +4,9 @@
   "description": "Root package to run both frontend and backend concurrently",
   "scripts": {
     "dev": "npx concurrently \"cd cadre-erp/backend && npm run dev\" \"cd cadre-erp/frontend && npm run dev\"",
-    "install-all": "cd cadre-erp/backend && npm install && cd ../frontend && npm install"
+    "install-all": "cd cadre-erp/backend && npm install && cd ../frontend && npm install",
+    "postinstall": "npm run install-all",
+    "build": "cd cadre-erp/frontend && npm run build",
+    "start": "cd cadre-erp/backend && npm start"
   }
 }

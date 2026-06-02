@@ -48,9 +48,16 @@ app.use('/api/portal', clientPortalRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/leads', leadRoutes);
 
-// Base route
-app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to Cadre ERP API' });
+// Serve Frontend static files
+const frontendPath = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(frontendPath));
+
+// For any other route, send the React app index.html
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // Error handling middleware
