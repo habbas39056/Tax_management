@@ -1,0 +1,71 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+
+// Import routes
+const authRoutes = require('./routes/authRoutes');
+const clientRoutes = require('./routes/clientRoutes');
+const projectRoutes = require('./routes/projectRoutes');
+const financeRoutes = require('./routes/financeRoutes');
+const aiRoutes = require('./routes/aiRoutes');
+const userRoutes = require('./routes/userRoutes');
+const clientPortalRoutes = require('./routes/clientPortalRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const leadRoutes = require('./routes/leadRoutes');
+const { runDueMilestoneCheck } = require('./services/automationService');
+
+const path = require('path');
+const app = express();
+
+// Start automation tasks
+runDueMilestoneCheck(); // Run once on startup
+
+// Static files
+app.use('/api/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Middleware
+app.use(cors({
+  origin: [
+    'http://localhost:5173', 
+    'http://127.0.0.1:5173',
+    'http://localhost:5174', 
+    'http://127.0.0.1:5174'
+  ],
+  credentials: true
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+app.use((req, res, next) => {
+  console.log(`[REQUEST] ${req.method} ${req.url}`);
+  next();
+});
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/clients', clientRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/finance', financeRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/portal', clientPortalRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/leads', leadRoutes);
+
+// Base route
+app.get('/', (req, res) => {
+  res.json({ message: 'Welcome to Cadre ERP API' });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something went wrong!', error: process.env.NODE_ENV === 'development' ? err.message : undefined });
+});
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});

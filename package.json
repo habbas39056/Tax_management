@@ -1,0 +1,9 @@
+{
+  "name": "cadre-erp-root",
+  "version": "1.0.0",
+  "description": "Root package to run both frontend and backend concurrently",
+  "scripts": {
+    "dev": "npx concurrently \"cd cadre-erp/backend && npm run dev\" \"cd cadre-erp/frontend && npm run dev\"",
+    "install-all": "cd cadre-erp/backend && npm install && cd ../frontend && npm install"
+  }
+}

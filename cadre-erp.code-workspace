@@ -1,0 +1,17 @@
+{
+  "folders": [
+    {
+      "name": "CADRE ERP (Root)",
+      "path": "."
+    },
+    {
+      "name": "Frontend (UI)",
+      "path": "cadre-erp/frontend"
+    },
+    {
+      "name": "Backend",
+      "path": "cadre-erp/backend"
+    }
+  ],
+  "settings": {}
+}
