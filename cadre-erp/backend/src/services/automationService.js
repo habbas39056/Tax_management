@@ -6,7 +6,7 @@ const { sendWhatsAppMessage } = require('./notificationService');
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'Bestfather@51',
+  password: process.env.DB_PASSWORD || process.env.DB_PASS || 'Bestfather@51',
   database: process.env.DB_NAME || 'cadre_erp',
   waitForConnections: true,
   connectionLimit: 10
