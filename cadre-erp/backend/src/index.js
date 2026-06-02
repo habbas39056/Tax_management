@@ -52,12 +52,12 @@ app.use('/api/leads', leadRoutes);
 const frontendPath = path.join(__dirname, '../../frontend/dist');
 app.use(express.static(frontendPath));
 
-// For any other route, send the React app index.html
-app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api')) {
-    return next();
+// For any other GET route, send the React app index.html
+app.use((req, res, next) => {
+  if (req.method === 'GET' && !req.path.startsWith('/api')) {
+    return res.sendFile(path.join(frontendPath, 'index.html'));
   }
-  res.sendFile(path.join(frontendPath, 'index.html'));
+  next();
 });
 
 // Error handling middleware
