@@ -23,8 +23,9 @@ const getServices = async (req, res) => {
 const createService = async (req, res) => {
   try {
     const { name } = req.body;
-    await pool.query('INSERT INTO services (id, name) VALUES (UUID(), ?)', [name]);
-    res.status(201).json({ message: 'Service created' });
+    const id = require('crypto').randomUUID();
+    await pool.query('INSERT INTO services (id, name) VALUES (?, ?)', [id, name]);
+    res.status(201).json({ id, message: 'Service created' });
   } catch (error) {
     res.status(500).json({ message: 'Error creating service' });
   }

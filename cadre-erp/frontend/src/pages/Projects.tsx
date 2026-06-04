@@ -36,7 +36,7 @@ const Projects: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [serviceFilter, setServiceFilter] = useState('');
 
-  const [formData, setFormData] = useState({ client_id: '', service_id: '', title: '', invoice_id: '' });
+  const [formData, setFormData] = useState({ client_id: '', service_id: '', title: '', invoice_id: '', custom_service_name: '' });
 
   const fetchData = async () => {
     try {
@@ -74,10 +74,26 @@ const Projects: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post('/projects', formData);
+      let finalServiceId = formData.service_id;
+      if (finalServiceId === 'custom') {
+        if (!formData.custom_service_name.trim()) {
+          toast.error('Please enter a custom service name');
+          setLoading(false);
+          return;
+        }
+        const serviceRes = await api.post('/projects/services', { name: formData.custom_service_name });
+        finalServiceId = serviceRes.data.id;
+      }
+
+      await api.post('/projects', {
+        client_id: formData.client_id,
+        service_id: finalServiceId,
+        title: formData.title,
+        invoice_id: formData.invoice_id
+      });
       toast.success('Project created successfully!');
       setIsModalOpen(false);
-      setFormData({ client_id: '', service_id: '', title: '', invoice_id: '' });
+      setFormData({ client_id: '', service_id: '', title: '', invoice_id: '', custom_service_name: '' });
       fetchData();
     } catch (error) {
       toast.error('Failed to create project');
@@ -261,8 +277,15 @@ const Projects: React.FC = () => {
                 <select required value={formData.service_id} onChange={(e) => setFormData({...formData, service_id: e.target.value})} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md sm:text-sm">
                   <option value="">Select a service</option>
                   {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  <option value="custom">+ Add Custom Service...</option>
                 </select>
               </div>
+              {formData.service_id === 'custom' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Custom Service Name *</label>
+                  <input required type="text" value={formData.custom_service_name} onChange={(e) => setFormData({...formData, custom_service_name: e.target.value})} className="block w-full px-3 py-2 mt-1 border border-indigo-200 bg-indigo-50 rounded-md sm:text-sm" placeholder="e.g. Graphic Design" />
+                </div>
+              )}
               <div className="flex justify-end pt-4 space-x-3">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md">Cancel</button>
                 <button type="submit" disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md">Create</button>
