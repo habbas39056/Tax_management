@@ -22,6 +22,7 @@ const InvoiceDetails: React.FC = () => {
 
   // Edit State
   const [editData, setEditData] = useState<any>(null);
+  const [openDropdownIdx, setOpenDropdownIdx] = useState<number | null>(null);
 
   const fetchAgents = async () => {
     try {
@@ -49,6 +50,14 @@ const InvoiceDetails: React.FC = () => {
     try {
       const res = await api.get('/clients');
       setClients(res.data);
+    } catch (e) {}
+  };
+
+  const [services, setServices] = useState<any[]>([]);
+  const fetchServices = async () => {
+    try {
+      const res = await api.get('/projects/services');
+      setServices(res.data);
     } catch (e) {}
   };
 
@@ -127,6 +136,7 @@ const InvoiceDetails: React.FC = () => {
     }
     fetchClients();
     fetchAgents();
+    fetchServices();
   }, [id]);
 
   useEffect(() => {
@@ -649,7 +659,7 @@ const InvoiceDetails: React.FC = () => {
                 </div>
 
                 {/* Line Items Table */}
-                <div className="border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+                <div className="border border-gray-100 rounded-xl overflow-visible shadow-sm">
                   <table className="w-full text-left">
                     <thead>
                       <tr className="bg-[#F8FAFC] border-b border-gray-100">
@@ -674,11 +684,45 @@ const InvoiceDetails: React.FC = () => {
                           <td className="px-6 py-5 text-sm font-bold text-gray-400 text-center">{idx + 1}</td>
                           <td className="px-6 py-5">
                             {isEditing ? (
-                              <input value={item.description} onChange={e => {
-                                const newItems = [...editData.items];
-                                newItems[idx].description = e.target.value;
-                                setEditData({...editData, items: newItems});
-                              }} className="w-full bg-transparent border-none focus:ring-0 font-bold text-gray-900 p-0" />
+                              <div className="relative group w-full">
+                                <input 
+                                  value={item.description} 
+                                  onChange={e => {
+                                    const newItems = [...editData.items];
+                                    newItems[idx].description = e.target.value;
+                                    setEditData({...editData, items: newItems});
+                                  }} 
+                                  onFocus={() => setOpenDropdownIdx(idx)}
+                                  onBlur={() => setTimeout(() => setOpenDropdownIdx(null), 200)}
+                                  className="w-full bg-transparent border-b border-dashed border-indigo-200 focus:border-indigo-500 focus:ring-0 font-bold text-gray-900 p-1 outline-none transition-colors" 
+                                  placeholder="Type or select a service" 
+                                />
+                                {openDropdownIdx === idx && (
+                                  <div className="absolute z-50 left-0 top-full mt-2 w-full min-w-[240px] bg-white border border-gray-100 rounded-xl shadow-2xl overflow-hidden py-2 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                                    {services
+                                      .filter((s: any) => s.name.toLowerCase().includes((item.description || '').toLowerCase()))
+                                      .map((s: any) => (
+                                        <button
+                                          key={s.id}
+                                          type="button"
+                                          className="w-full text-left px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+                                          onMouseDown={(e) => {
+                                            e.preventDefault(); // Prevent blur
+                                            const newItems = [...editData.items];
+                                            newItems[idx].description = s.name;
+                                            setEditData({...editData, items: newItems});
+                                            setOpenDropdownIdx(null);
+                                          }}
+                                        >
+                                          {s.name}
+                                        </button>
+                                    ))}
+                                    {services.filter((s: any) => s.name.toLowerCase().includes((item.description || '').toLowerCase())).length === 0 && (
+                                      <div className="px-4 py-3 text-sm text-gray-400 font-medium italic text-center">Press Enter to use custom text</div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <div className="font-bold text-gray-900 whitespace-pre-line">{item.description}</div>
                             )}
@@ -807,7 +851,7 @@ const InvoiceDetails: React.FC = () => {
                          )}
                       </div>
                       <div className="flex justify-between items-center text-sm font-bold text-gray-500">
-                         <span>Tax Amount (GST)</span>
+                         <span>Tax Amount ({(isEditing ? editData?.gst_rate : invoice?.gst_rate) || 0}% GST)</span>
                          {isEditing ? (
                            <input type="number" value={editData.tax_amount !== undefined ? editData.tax_amount : calculatedGst} onChange={e => setEditData({...editData, tax_amount: e.target.value === '' ? undefined : Number(e.target.value)})}
                              className="w-24 bg-gray-50 border-none rounded p-1 text-right font-black text-gray-900 outline-none" />
@@ -1121,9 +1165,28 @@ const InvoiceDetails: React.FC = () => {
                 </td>
               </tr>
             ))}
+            {/* Breakdown Rows */}
+            {((editData?.tax_amount ?? gst) > 0 || discount > 0) && (
+              <tr>
+                <td className="border border-black px-4 py-2 font-bold text-black text-right">Sub Total</td>
+                <td className="border border-black px-4 py-2 text-center font-bold text-black">{subtotal.toLocaleString()}</td>
+              </tr>
+            )}
+            {discount > 0 && (
+              <tr>
+                <td className="border border-black px-4 py-2 font-bold text-black text-right">Discount</td>
+                <td className="border border-black px-4 py-2 text-center font-bold text-black">- {discount.toLocaleString()}</td>
+              </tr>
+            )}
+            {(editData?.tax_amount ?? gst) > 0 && (
+              <tr>
+                <td className="border border-black px-4 py-2 font-bold text-black text-right">Tax Amount ({(isEditing ? editData?.gst_rate : invoice?.gst_rate) || 0}% GST)</td>
+                <td className="border border-black px-4 py-2 text-center font-bold text-black">{(editData?.tax_amount ?? gst).toLocaleString()}</td>
+              </tr>
+            )}
             {/* Total Row */}
             <tr className="bg-[#b3b3b3]">
-              <td className="border border-black px-4 py-2 font-bold text-black">Total Amount Receivable</td>
+              <td className="border border-black px-4 py-2 font-bold text-black text-right">Total Amount Receivable</td>
               <td className="border border-black px-4 py-2 text-center font-bold text-black">{total.toLocaleString()}</td>
             </tr>
             {totalPaid > 0 && (

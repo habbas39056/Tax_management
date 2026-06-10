@@ -1,6 +1,7 @@
 const fs = require('fs');
-const pdfParse = require('pdf-parse');
 const db = require('../config/db');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleAIFileManager } = require('@google/generative-ai/server');
 
 const analyzeBankStatement = async (req, res) => {
   let filePath = null;
@@ -18,17 +19,6 @@ const analyzeBankStatement = async (req, res) => {
     console.log('File size:', req.file.size);
     console.log('File mimetype:', req.file.mimetype);
 
-    // Read & parse the PDF
-    console.log('Reading PDF file...');
-    const dataBuffer = fs.readFileSync(filePath);
-    console.log('PDF buffer size:', dataBuffer.length);
-
-    console.log('Parsing PDF...');
-    const pdfData = await pdfParse(dataBuffer);
-    const textContent = pdfData.text;
-    console.log('Extracted text length:', textContent.length);
-    console.log('First 200 chars of text:', textContent.substring(0, 200));
-
     // Validate API key
     const apiKey = process.env.GEMINI_API_KEY;
     console.log('GEMINI_API_KEY exists?', !!apiKey);
@@ -41,7 +31,7 @@ const analyzeBankStatement = async (req, res) => {
       return res.status(500).json({ message: 'GEMINI_API_KEY is not configured in .env file' });
     }
 
-    const prompt = `You are a professional financial analyst. I am providing you with the text extracted from a bank statement PDF.
+    const prompt = `You are a professional financial analyst. I am providing you with a bank statement PDF.
 Analyze this bank statement and extract the following information. You must meticulously identify account details, calculate financial turnovers, categorize transactions, identify risks, and provide a compliance summary.
 
 Return the result EXCLUSIVELY as a valid JSON object matching this exact schema:
@@ -81,50 +71,50 @@ Return the result EXCLUSIVELY as a valid JSON object matching this exact schema:
   "generalSummary": "string (A detailed paragraph summarizing the bank activity, compliance notes, and source of wealth declarations)"
 }
 
-If any specific value cannot be found, output "N/A" for strings or "0.00" for numeric fields. Do not hallucinate data.
+If any specific value cannot be found, output "N/A" for strings or "0.00" for numeric fields. Do not hallucinate data.`;
 
-Bank Statement Text:
-${textContent.substring(0, 50000)}`;
+    // 1. Upload PDF to Gemini File API
+    console.log('Uploading PDF to Gemini File Manager...');
+    const fileManager = new GoogleAIFileManager(apiKey);
+    const uploadResult = await fileManager.uploadFile(filePath, {
+      mimeType: "application/pdf",
+      displayName: "Bank Statement",
+    });
+    console.log('Upload successful. File URI:', uploadResult.file.uri);
 
-    // Call Gemini REST API directly
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    // 2. Call Gemini SDK
     console.log('Calling Gemini API...');
-    console.log('URL:', geminiUrl.replace(apiKey, 'HIDDEN'));
+    const genAI = new GoogleGenerativeAI(apiKey);
+    
+    // We use gemini-2.5-flash as originally configured
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const response = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0,
-          responseMimeType: "application/json"
-        }
-      })
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              fileData: {
+                mimeType: uploadResult.file.mimeType,
+                fileUri: uploadResult.file.uri,
+              },
+            },
+            { text: prompt },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0,
+      },
     });
 
-    console.log('Gemini API response status:', response.status);
-    const geminiData = await response.json();
     console.log('Gemini API response received');
-
-    if (!response.ok) {
-      console.error('Gemini API Error Details:', JSON.stringify(geminiData, null, 2));
-      if (filePath && fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-      return res.status(500).json({
-        message: 'Error communicating with Gemini AI',
-        detail: geminiData?.error?.message || 'Unknown error',
-        status: response.status
-      });
-    }
-
-    // Extract text from Gemini response
-    const textResponse = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const textResponse = result.response.text();
     console.log('Gemini response text length:', textResponse?.length || 0);
 
     if (!textResponse) {
-      console.error('Unexpected Gemini response structure:', JSON.stringify(geminiData, null, 2));
+      console.error('Unexpected Gemini response structure');
       if (filePath && fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }

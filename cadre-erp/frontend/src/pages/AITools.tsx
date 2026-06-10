@@ -36,7 +36,7 @@ const AITools: React.FC = () => {
     setLoading(true);
     try {
       const response = await api.post('/ai/analyze-bank-statement', formData, {
-        timeout: 60000 // Increased timeout to 60 seconds
+        timeout: 300000 // Increased timeout to 5 minutes for large PDFs
       });
       setResult(response.data);
       toast.success('Analysis complete!');
@@ -63,7 +63,7 @@ const AITools: React.FC = () => {
 
   const handleDownload = () => {
     if (!result) return;
-    
+
     const element = document.getElementById('pdf-report-content');
     if (!element) {
       toast.error('Report content not found.');
@@ -71,7 +71,7 @@ const AITools: React.FC = () => {
     }
 
     const toastId = toast.loading('Generating perfect PDF layout...');
-    
+
     // Dynamically import to save bundle size
     Promise.all([
       import('jspdf'),
@@ -109,9 +109,9 @@ const AITools: React.FC = () => {
           pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
           heightLeft -= pageHeight;
         }
-        
+
         pdf.save(`bank-statement-analytical-report-${new Date().toISOString().split('T')[0]}.pdf`);
-        
+
         toast.success('Report downloaded successfully!', { id: toastId });
       }).catch((err) => {
         console.error('Canvas generation failed', err);
@@ -163,7 +163,7 @@ const AITools: React.FC = () => {
                 ${(!file || loading) ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
             >
               {loading ? (
-                <>Analyzing via Gemini AI...</>
+                <>Analyzing via AdwiseLabs AI...</>
               ) : (
                 <><Upload className="w-4 h-4 mr-2" /> Analyze Statement</>
               )}
@@ -177,7 +177,7 @@ const AITools: React.FC = () => {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-blue-700">
-                  This tool securely reads PDFs and uses Google's Gemini 2.5 Flash to extract total flow and flag potentially suspicious transactions that need human review.
+                  This tool securely reads PDFs and uses AdwiseLabs AI to extract total flow and flag potentially suspicious transactions that need human review.
                 </p>
               </div>
             </div>
@@ -373,7 +373,7 @@ const AITools: React.FC = () => {
                       {result.generalSummary}
                     </p>
                   </section>
-                  
+
                   {/* FOOTER */}
                   <div className="pt-8 text-center border-t border-gray-100">
                     <p className="text-[10px] text-gray-400 uppercase tracking-widest">
