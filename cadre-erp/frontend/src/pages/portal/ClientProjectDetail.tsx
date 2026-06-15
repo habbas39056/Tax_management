@@ -457,7 +457,7 @@ const ClientProjectDetail: React.FC = () => {
               <form onSubmit={handleUpdateInvoice} className="space-y-8 overflow-y-auto pr-4 custom-scrollbar">
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">GST Rate (%)</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">ST Rate (%)</label>
                     <input type="number" value={editingInvoice.gst_rate} onChange={e => setEditingInvoice({ ...editingInvoice, gst_rate: Number(e.target.value) })}
                       className="w-full mt-2 px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-black focus:ring-2 focus:ring-indigo-600 outline-none" />
                   </div>
@@ -522,7 +522,7 @@ const ClientProjectDetail: React.FC = () => {
                   <div className="bg-gray-900 text-white p-6 rounded-[32px] flex justify-between items-center shadow-xl shadow-gray-200 mt-6">
                     <div>
                       <span className="text-[10px] font-black uppercase opacity-60 tracking-[2px]">Final Amount</span>
-                      <p className="text-[10px] text-gray-400 font-bold mt-1">Includes GST & Adjustments</p>
+                      <p className="text-[10px] text-gray-400 font-bold mt-1">Includes ST & Adjustments</p>
                     </div>
                     <span className="text-3xl font-black">
                       Rs. {(

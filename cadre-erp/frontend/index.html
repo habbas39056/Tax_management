@@ -5,6 +5,11 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cadre ERP Platform</title>
+    <script>
+      window.addEventListener('error', (event) => {
+        document.body.innerHTML = '<div style="color:red; padding:20px;"><h1>Early Global Error:</h1><pre>' + (event.error?.stack || event.message || event) + '</pre></div>';
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

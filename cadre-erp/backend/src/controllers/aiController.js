@@ -31,7 +31,23 @@ const analyzeBankStatement = async (req, res) => {
       return res.status(500).json({ message: 'GEMINI_API_KEY is not configured in .env file' });
     }
 
-    const prompt = `You are a professional financial analyst. I am providing you with a bank statement PDF.
+    const prompt = `You are a professional financial analyst specializing in Pakistani bank statements. I am providing you with a bank statement PDF.
+
+IMPORTANT: Bank statements come in many different formats. Some have clear "Credit" and "Debit" columns, but many do NOT. You must handle ALL formats including:
+- Statements with only a single "Amount" column (use Dr/Cr markers, +/- signs, or running balance changes to determine if a transaction is credit or debit)
+- Statements with "Withdrawals" and "Deposits" instead of "Debit" and "Credit"
+- Statements where credits and debits are in the same column distinguished by positive/negative values
+- Statements with "Dr" / "Cr" suffixes on amounts
+- Statements that only show a running balance (calculate individual transactions by comparing consecutive balances)
+- Statements in any language or layout format
+- Scanned or image-based statement PDFs
+
+To determine credits vs debits when headers are missing:
+1. If there's a running balance column, compare consecutive rows: if balance increases, it's a credit; if it decreases, it's a debit
+2. Look for keywords in descriptions like "deposit", "transfer in", "credit", "received", "salary" (credits) vs "withdrawal", "payment", "debit", "transfer out", "charge" (debits)
+3. Look for Dr/Cr notation anywhere in the row
+4. If amounts have +/- signs, positive = credit, negative = debit
+
 Analyze this bank statement and extract the following information. You must meticulously identify account details, calculate financial turnovers, categorize transactions, identify risks, and provide a compliance summary.
 
 Return the result EXCLUSIVELY as a valid JSON object matching this exact schema:
@@ -71,7 +87,11 @@ Return the result EXCLUSIVELY as a valid JSON object matching this exact schema:
   "generalSummary": "string (A detailed paragraph summarizing the bank activity, compliance notes, and source of wealth declarations)"
 }
 
-If any specific value cannot be found, output "N/A" for strings or "0.00" for numeric fields. Do not hallucinate data.`;
+CRITICAL RULES:
+- You MUST always return a valid JSON response regardless of the statement format.
+- If any specific value cannot be found, output "N/A" for strings or "0.00" for numeric fields.
+- If the document format is unusual, do your BEST to extract whatever information is available. Never refuse to analyze.
+- Do not hallucinate data. Only report what you can extract or reasonably infer from the document.`;
 
     // 1. Upload PDF to Gemini File API
     console.log('Uploading PDF to Gemini File Manager...');
@@ -82,7 +102,30 @@ If any specific value cannot be found, output "N/A" for strings or "0.00" for nu
     });
     console.log('Upload successful. File URI:', uploadResult.file.uri);
 
-    // 2. Call Gemini SDK
+    // 2. Wait for file to be fully processed (critical for large PDFs 150+ pages)
+    let fileState = uploadResult.file.state;
+    let fileInfo = uploadResult.file;
+    console.log('Initial file state:', fileState);
+    
+    while (fileState === 'PROCESSING') {
+      console.log('File still processing, waiting 5 seconds...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      fileInfo = await fileManager.getFile(uploadResult.file.name);
+      fileState = fileInfo.state;
+      console.log('File state:', fileState);
+    }
+
+    if (fileState === 'FAILED') {
+      console.error('File processing failed');
+      if (filePath && fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      return res.status(400).json({ message: 'Failed to process PDF. The file may be too large or corrupted.' });
+    }
+
+    console.log('File is ACTIVE and ready for analysis');
+
+    // 3. Call Gemini SDK
     console.log('Calling Gemini API...');
     const genAI = new GoogleGenerativeAI(apiKey);
     
@@ -96,8 +139,8 @@ If any specific value cannot be found, output "N/A" for strings or "0.00" for nu
           parts: [
             {
               fileData: {
-                mimeType: uploadResult.file.mimeType,
-                fileUri: uploadResult.file.uri,
+                mimeType: fileInfo.mimeType,
+                fileUri: fileInfo.uri,
               },
             },
             { text: prompt },
@@ -134,17 +177,29 @@ If any specific value cannot be found, output "N/A" for strings or "0.00" for nu
 
       // Validate required fields and fallbacks
       const fallbackZero = "0";
-      if (!parsedData.totalCredits) parsedData.totalCredits = fallbackZero;
-      if (!parsedData.totalDebits) parsedData.totalDebits = fallbackZero;
-      if (!parsedData.openingBalance) parsedData.openingBalance = fallbackZero;
-      if (!parsedData.closingBalance) parsedData.closingBalance = fallbackZero;
-      if (!parsedData.bankToBankTransfers) parsedData.bankToBankTransfers = fallbackZero;
-      if (!parsedData.cashDeposits) parsedData.cashDeposits = fallbackZero;
-      if (!parsedData.chequeDeposits) parsedData.chequeDeposits = fallbackZero;
-      if (!parsedData.remittance) parsedData.remittance = fallbackZero;
-      if (!parsedData.bankingProfitsAndTax) parsedData.bankingProfitsAndTax = fallbackZero;
-      if (!parsedData.summary) parsedData.summary = "Analysis completed but summary not available";
-      if (!parsedData.unusualTransactions) parsedData.unusualTransactions = [];
+      if (!parsedData.financialSummary) parsedData.financialSummary = {};
+      if (!parsedData.financialSummary.totalCreditTurnover) parsedData.financialSummary.totalCreditTurnover = parsedData.totalCredits || fallbackZero;
+      if (!parsedData.financialSummary.totalDebitTurnover) parsedData.financialSummary.totalDebitTurnover = parsedData.totalDebits || fallbackZero;
+      if (!parsedData.financialSummary.openingBalance) parsedData.financialSummary.openingBalance = parsedData.openingBalance || fallbackZero;
+      if (!parsedData.financialSummary.closingBalance) parsedData.financialSummary.closingBalance = parsedData.closingBalance || fallbackZero;
+
+      if (!parsedData.transactionalBreakdowns) parsedData.transactionalBreakdowns = {};
+
+      if (!parsedData.generalSummary) {
+        if (parsedData.summary) {
+          parsedData.generalSummary = parsedData.summary;
+        } else {
+          parsedData.generalSummary = "Analysis completed but summary not available.";
+        }
+      }
+      
+      if (!parsedData.unusualActivity) {
+        if (parsedData.unusualTransactions) {
+          parsedData.unusualActivity = parsedData.unusualTransactions;
+        } else {
+          parsedData.unusualActivity = [];
+        }
+      }
 
     } catch (parseError) {
       console.error('Failed to parse Gemini JSON:', textResponse);

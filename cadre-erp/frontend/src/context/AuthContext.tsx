@@ -32,7 +32,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // For now, we'll decode it or assume it's valid until an API call fails.
     const storedUser = localStorage.getItem('user');
     if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (err) {
+        console.error('Failed to parse user from localStorage', err);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setToken(null);
+        setUser(null);
+      }
     } else {
       localStorage.removeItem('token');
       localStorage.removeItem('user');

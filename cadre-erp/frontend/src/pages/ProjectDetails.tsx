@@ -537,7 +537,7 @@ const ProjectDetails: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">GST Rate (%)</label>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">ST Rate (%)</label>
                     <input type="number" value={editingInvoice.gst_rate} onChange={e => setEditingInvoice({...editingInvoice, gst_rate: Number(e.target.value)})}
                       className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold" />
                   </div>

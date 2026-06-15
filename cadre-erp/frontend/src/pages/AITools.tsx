@@ -16,8 +16,8 @@ const AITools: React.FC = () => {
         toast.error('Only PDF files are allowed');
         return;
       }
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        toast.error('File size must be less than 10MB');
+      if (selectedFile.size > 50 * 1024 * 1024) {
+        toast.error('File size must be less than 50MB');
         return;
       }
       setFile(selectedFile);
@@ -36,14 +36,16 @@ const AITools: React.FC = () => {
     setLoading(true);
     try {
       const response = await api.post('/ai/analyze-bank-statement', formData, {
-        timeout: 300000 // Increased timeout to 5 minutes for large PDFs
+        timeout: 600000 // 10 minutes timeout for large PDFs (150+ pages)
       });
       setResult(response.data);
       toast.success('Analysis complete!');
     } catch (error: any) {
       // Better error handling without changing logic
       if (error.code === 'ECONNABORTED') {
-        toast.error('Request timeout. Please try again.');
+        toast.error('Request timeout. The PDF may be very large — please try again.');
+      } else if (error.response?.status === 502) {
+        toast.error('Server took too long processing the PDF. Please try again — large files need more time on first attempt.');
       } else if (error.response?.status === 500) {
         const serverMsg = error.response?.data?.message || 'Server error. Please ensure API key is configured correctly.';
         const detail = error.response?.data?.detail || error.response?.data?.raw || '';
@@ -145,7 +147,7 @@ const AITools: React.FC = () => {
                     <input id="file-upload" name="file-upload" type="file" className="sr-only" accept="application/pdf" onChange={handleFileChange} />
                   </label>
                 </div>
-                <p className="text-xs text-gray-500">PDF up to 10MB</p>
+                <p className="text-xs text-gray-500">PDF up to 50MB</p>
               </div>
             </div>
 

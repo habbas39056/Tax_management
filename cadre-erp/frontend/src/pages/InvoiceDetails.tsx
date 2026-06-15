@@ -206,12 +206,12 @@ const InvoiceDetails: React.FC = () => {
         }
       }
 
-      const subtotal = editData.items.reduce((s: number, i: any) => s + (i.quantity * i.price), 0);
+      const subtotal = editData.items.reduce((s: number, i: any) => s + (i.quantity * i.price) + (i.quantity * i.price * (i.tax_rate || 0) / 100), 0);
       const serviceTotal = editData.items.reduce((s: number, i: any) => i.is_service_charge ? s + (i.quantity * i.price) : s, 0);
       const calculatedItemTax = editData.items.reduce((s: number, i: any) => s + (i.quantity * i.price * (i.tax_rate || 0) / 100), 0);
       const afterDiscount = subtotal - Number(editData.discount || 0);
       const gst = editData.tax_amount !== undefined ? Number(editData.tax_amount) : calculatedItemTax;
-      const total = afterDiscount + gst;
+      const total = afterDiscount;
 
       const payload = {
         ...editData,
@@ -249,7 +249,7 @@ const InvoiceDetails: React.FC = () => {
   );
 
   const items = isEditing ? editData.items : (invoice.items ? (typeof invoice.items === 'string' ? JSON.parse(invoice.items) : invoice.items) : []);
-  const subtotal = items.reduce((s: number, i: any) => s + (i.quantity * i.price), 0);
+  const subtotal = items.reduce((s: number, i: any) => s + (i.quantity * i.price) + (i.quantity * i.price * (i.tax_rate || 0) / 100), 0);
   const serviceTotal = items.reduce((s: number, i: any) => i.is_service_charge ? s + (i.quantity * i.price) : s, 0);
   const discount = isEditing ? Number(editData?.discount || 0) : (Number(invoice?.discount) || 0);
   const calculatedItemTax = items.reduce((s: number, i: any) => s + (i.quantity * i.price * (i.tax_rate || 0) / 100), 0);
@@ -257,7 +257,7 @@ const InvoiceDetails: React.FC = () => {
   const gst = isEditing 
     ? (editData?.tax_amount !== undefined ? Number(editData.tax_amount) : calculatedGst) 
     : (Number(invoice?.tax_amount) || 0);
-  const total = isEditing ? (subtotal - discount + gst) : (Number(invoice?.total_amount) || 0);
+  const total = isEditing ? (subtotal - discount) : (Number(invoice?.total_amount) || 0);
 
   const totalPaid = payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
   const remainingAmount = Math.max(0, total - totalPaid);
@@ -816,7 +816,7 @@ const InvoiceDetails: React.FC = () => {
                              )}
                           </td>
                           <td className="px-6 py-5 text-right font-black text-gray-900">
-                             {(item.quantity * item.price).toLocaleString()}
+                             {(item.quantity * item.price + (item.quantity * item.price * (item.tax_rate || 0) / 100)).toLocaleString()}
                           </td>
                           {isEditing && (
                             <td className="px-4 py-5 text-center">
@@ -851,7 +851,7 @@ const InvoiceDetails: React.FC = () => {
                          )}
                       </div>
                       <div className="flex justify-between items-center text-sm font-bold text-gray-500">
-                         <span>Tax Amount ({(isEditing ? editData?.gst_rate : invoice?.gst_rate) || 0}% GST)</span>
+                         <span>Tax (Included in Subtotal)</span>
                          {isEditing ? (
                            <input type="number" value={editData.tax_amount !== undefined ? editData.tax_amount : calculatedGst} onChange={e => setEditData({...editData, tax_amount: e.target.value === '' ? undefined : Number(e.target.value)})}
                              className="w-24 bg-gray-50 border-none rounded p-1 text-right font-black text-gray-900 outline-none" />
@@ -1153,6 +1153,7 @@ const InvoiceDetails: React.FC = () => {
           <thead>
             <tr className="bg-[#b3b3b3]">
               <th className="border border-black px-4 py-2 text-center font-bold text-black">Description</th>
+              <th className="border border-black px-4 py-2 text-center font-bold text-black w-32">ST</th>
               <th className="border border-black px-4 py-2 text-center font-bold text-black w-40">Amount</th>
             </tr>
           </thead>
@@ -1161,42 +1162,45 @@ const InvoiceDetails: React.FC = () => {
               <tr key={idx}>
                 <td className="border border-black px-4 py-2 text-black font-semibold">{item.description}</td>
                 <td className="border border-black px-4 py-2 text-center text-black font-semibold">
-                  {(item.quantity * item.price).toLocaleString()}
+                  {item.tax_rate || 0}%
+                </td>
+                <td className="border border-black px-4 py-2 text-center text-black font-semibold">
+                  {(item.quantity * item.price + (item.quantity * item.price * (item.tax_rate || 0) / 100)).toLocaleString()}
                 </td>
               </tr>
             ))}
             {/* Breakdown Rows */}
             {((editData?.tax_amount ?? gst) > 0 || discount > 0) && (
               <tr>
-                <td className="border border-black px-4 py-2 font-bold text-black text-right">Sub Total</td>
+                <td colSpan={2} className="border border-black px-4 py-2 font-bold text-black text-right">Sub Total</td>
                 <td className="border border-black px-4 py-2 text-center font-bold text-black">{subtotal.toLocaleString()}</td>
               </tr>
             )}
             {discount > 0 && (
               <tr>
-                <td className="border border-black px-4 py-2 font-bold text-black text-right">Discount</td>
+                <td colSpan={2} className="border border-black px-4 py-2 font-bold text-black text-right">Discount</td>
                 <td className="border border-black px-4 py-2 text-center font-bold text-black">- {discount.toLocaleString()}</td>
               </tr>
             )}
             {(editData?.tax_amount ?? gst) > 0 && (
               <tr>
-                <td className="border border-black px-4 py-2 font-bold text-black text-right">Tax Amount ({(isEditing ? editData?.gst_rate : invoice?.gst_rate) || 0}% GST)</td>
+                <td colSpan={2} className="border border-black px-4 py-2 font-bold text-black text-right">Total ST Amount (Included in Subtotal)</td>
                 <td className="border border-black px-4 py-2 text-center font-bold text-black">{(editData?.tax_amount ?? gst).toLocaleString()}</td>
               </tr>
             )}
             {/* Total Row */}
             <tr className="bg-[#b3b3b3]">
-              <td className="border border-black px-4 py-2 font-bold text-black text-right">Total Amount Receivable</td>
+              <td colSpan={2} className="border border-black px-4 py-2 font-bold text-black text-right">Total Amount Receivable</td>
               <td className="border border-black px-4 py-2 text-center font-bold text-black">{total.toLocaleString()}</td>
             </tr>
             {totalPaid > 0 && (
               <>
                 <tr>
-                  <td className="border border-black px-4 py-2 font-bold text-black text-right">Amount Paid</td>
+                  <td colSpan={2} className="border border-black px-4 py-2 font-bold text-black text-right">Amount Paid</td>
                   <td className="border border-black px-4 py-2 text-center font-bold text-black">{totalPaid.toLocaleString()}</td>
                 </tr>
                 <tr>
-                  <td className="border border-black px-4 py-2 font-bold text-black text-right">Remaining Balance</td>
+                  <td colSpan={2} className="border border-black px-4 py-2 font-bold text-black text-right">Remaining Balance</td>
                   <td className="border border-black px-4 py-2 text-center font-bold text-black">{remainingAmount.toLocaleString()}</td>
                 </tr>
               </>

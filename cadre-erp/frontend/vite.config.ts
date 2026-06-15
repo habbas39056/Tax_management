@@ -9,6 +9,8 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
+        timeout: 600000, // 10 minutes for large PDF processing
+        proxyTimeout: 600000,
       },
     },
   },

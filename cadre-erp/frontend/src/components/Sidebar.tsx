@@ -43,10 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
         icon: Bot, 
         roles: ['Super Admin', 'Operations'],
         subItems: [
-          { name: 'AI Report', path: '/ai-agents/report' },
-          { name: 'Knowledge Base', path: '/ai-agents/knowledge-base' },
-          { name: 'Leads', path: '/ai-agents/leads' },
-          { name: 'AI Config', path: '/ai-agents/config' }
+          { name: 'AI Report', path: '/ai-agents/report' }
         ]
       },
       { name: 'Staff Management', path: '/staff', icon: Shield, roles: ['Super Admin'] },
