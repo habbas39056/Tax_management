@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Bell, User, LogOut } from 'lucide-react';
 import { Menu, Popover, Transition } from '@headlessui/react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 import api from '../utils/api';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [notifications, setNotifications] = useState<any[]>([]);
 
@@ -47,11 +48,19 @@ const Navbar: React.FC = () => {
     }
   };
 
+  let headerTitle = "System Overview";
+  let headerSubtitle = `Welcome back, ${user?.name || 'User'}`;
+
+  if (location.pathname === '/reports') {
+    headerTitle = "System Reports";
+    headerSubtitle = "Comprehensive overview of clients and sales agents";
+  }
+
   return (
     <header className="flex items-center justify-between px-8 py-5 bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-10">
       <div className="flex flex-col">
-        <h1 className="text-xl font-bold text-gray-900 tracking-tight">System Overview</h1>
-        <p className="text-xs font-semibold text-gray-400">Welcome back, {user?.name || 'User'}</p>
+        <h1 className="text-xl font-bold text-gray-900 tracking-tight">{headerTitle}</h1>
+        <p className="text-xs font-semibold text-gray-400">{headerSubtitle}</p>
       </div>
       
       <div className="flex items-center space-x-5">

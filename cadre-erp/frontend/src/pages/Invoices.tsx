@@ -29,7 +29,7 @@ const Invoices: React.FC = () => {
     client_id: '',
     items: [{ id: Math.random().toString(36), description: '', quantity: 1, price: 0 }] as InvoiceItem[],
     discount: 0,
-    gst_rate: 18, // Default 18%
+    gst_rate: 15, // Default 15%
     due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default 7 days from now
   });
 
@@ -90,7 +90,7 @@ const Invoices: React.FC = () => {
       client_id: inv.client_id || '',
       items: inv.items ? JSON.parse(inv.items) : [{ id: Math.random().toString(36), description: inv.description || 'Service', quantity: 1, price: inv.service_charges_total || 0 }],
       discount: inv.discount || 0,
-      gst_rate: inv.gst_rate || 18,
+      gst_rate: inv.gst_rate || 15,
       due_date: inv.due_date ? new Date(inv.due_date).toISOString().split('T')[0] : ''
     });
     setIsModalOpen(true);
@@ -103,7 +103,7 @@ const Invoices: React.FC = () => {
       client_id: '',
       items: [{ id: Math.random().toString(36), description: '', quantity: 1, price: 0 }],
       discount: 0,
-      gst_rate: 18,
+      gst_rate: 15,
       due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     });
   };

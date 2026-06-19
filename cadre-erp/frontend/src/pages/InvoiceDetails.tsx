@@ -129,7 +129,7 @@ const InvoiceDetails: React.FC = () => {
         status: 'unpaid',
         items: [{ description: '', quantity: 1, price: 0 }],
         discount: 0,
-        gst_rate: 18
+        gst_rate: 15
       });
       setIsEditing(true);
       setLoading(false);
@@ -339,6 +339,13 @@ const InvoiceDetails: React.FC = () => {
           
           tr, td, th {
             page-break-inside: avoid !important;
+          }
+
+          /* Summary table overrides */
+          .summary-table {
+            width: 16rem !important;
+            float: right !important;
+            margin-bottom: 2.5rem !important;
           }
         }
       `}} />
@@ -851,12 +858,29 @@ const InvoiceDetails: React.FC = () => {
                          )}
                       </div>
                       <div className="flex justify-between items-center text-sm font-bold text-gray-500">
+                         <div className="flex items-center gap-2">
+                           <span>SST Percentage</span>
+                           {isEditing ? (
+                             <div className="flex items-center">
+                               <input type="number" value={editData.gst_rate} onChange={e => {
+                                 const newRate = Number(e.target.value);
+                                 const newItems = editData.items.map((i: any) => ({ ...i, tax_rate: newRate }));
+                                 setEditData({...editData, gst_rate: newRate, items: newItems, tax_amount: undefined}); // auto-calculate tax
+                               }} className="w-16 bg-gray-50 border-none rounded p-1 text-right font-black text-gray-900 outline-none" />
+                               <span>%</span>
+                             </div>
+                           ) : (
+                             <span>({invoice.gst_rate || 15}%)</span>
+                           )}
+                         </div>
+                      </div>
+                      <div className="flex justify-between items-center text-sm font-bold text-gray-500">
                          <span>Tax (Included in Subtotal)</span>
                          {isEditing ? (
                            <input type="number" value={editData.tax_amount !== undefined ? editData.tax_amount : calculatedGst} onChange={e => setEditData({...editData, tax_amount: e.target.value === '' ? undefined : Number(e.target.value)})}
                              className="w-24 bg-gray-50 border-none rounded p-1 text-right font-black text-gray-900 outline-none" />
                          ) : (
-                           <span className="text-gray-900 font-black">Rs. {(editData.tax_amount ?? gst).toLocaleString()}</span>
+                           <span className="text-gray-900 font-black">Rs. {(editData?.tax_amount ?? gst).toLocaleString()}</span>
                          )}
                       </div>
                       <div className="flex justify-between items-center text-sm font-bold text-gray-500 pt-4 border-t border-gray-100">
@@ -1108,118 +1132,94 @@ const InvoiceDetails: React.FC = () => {
       </div>
 
       {/* Exact Print Layout matching the user's image */}
-      <div className="print-layout print-only bg-white text-black p-8 relative min-h-screen">
+      <div className="print-layout print-only bg-white text-black p-10 relative min-h-screen font-sans">
         {/* Header */}
-        <div className="flex justify-between items-start mb-8">
+        <div className="flex justify-between items-end mb-8">
           <div className="w-1/2">
-            <img src="/logo.png" alt="Logo" className="w-64 h-auto object-contain" />
+            <img src="/logo.png" alt="Logo" className="w-[320px] h-auto object-contain -ml-4" />
           </div>
-          <div className="w-1/2 text-right">
-            <div className="text-black font-bold text-sm mb-1">
+          <div className="w-1/2 flex justify-end pr-12 pb-4">
+            <div className="text-black text-[13px] font-semibold">
               Date: {new Date(invoice.created_at || Date.now()).toLocaleDateString('en-GB').replace(/\//g, '-')}
-            </div>
-            <div className="text-black font-bold text-sm tracking-[4px]">
-              ************************
             </div>
           </div>
         </div>
 
-        {/* Invoice Number & Bank Details */}
-        <div className="flex justify-between items-start mb-12">
-          <div className="w-1/2">
-            <div className="font-bold text-black text-[15px]">
-              Invoice INV-{invoice.id?.slice(0, 8).toUpperCase()}
-            </div>
-          </div>
-          <div className="w-1/2 text-right text-sm leading-tight space-y-1">
-            <div className="font-bold text-black">Account Title: Cadre Management Consultants</div>
-            <div className="font-bold text-black">Bank Islami Ltd.</div>
-            <div className="font-bold text-black">Gulshan e Iqbal Branch</div>
-            <div className="font-bold text-black">Branch Code: 1085</div>
-            <div className="font-bold text-black">Account Number: 108500303410001</div>
-            <div className="font-bold text-black">IBAN: PK53BKIP0108500303410001</div>
-          </div>
+        {/* Invoice Number */}
+        <div className="mb-6 font-bold text-[13px] text-black">
+          Invoice #: INV-{invoice.id?.slice(0, 8).toUpperCase()}
         </div>
 
         {/* Bill To */}
-        <div className="mb-12 text-[15px] text-black leading-tight space-y-1">
-          <div className="font-bold">Invoice To,</div>
-          <div>{invoice.client_name || invoice.bill_from_name},</div>
-          <div className="whitespace-pre-line">{invoice.bill_from_address}</div>
+        <div className="mb-8 text-[13px] text-black leading-tight space-y-1">
+          <div className="font-bold">Invoice to:</div>
+          <div className="font-bold flex"><span className="w-32">Name:</span> <span className="font-normal">{invoice.client_name}</span></div>
+          <div className="font-bold flex"><span className="w-32">Company Name:</span> <span className="font-normal">{invoice.bill_from_name}</span></div>
         </div>
 
         {/* Table */}
-        <table className="w-full border-collapse border border-black text-[15px] mb-12">
+        <table className="w-full border-collapse border-[2px] border-black text-[12px] mb-2">
           <thead>
-            <tr className="bg-[#b3b3b3]">
-              <th className="border border-black px-4 py-2 text-center font-bold text-black">Description</th>
-              <th className="border border-black px-4 py-2 text-center font-bold text-black w-32">ST</th>
-              <th className="border border-black px-4 py-2 text-center font-bold text-black w-40">Amount</th>
+            <tr className="bg-[#9c9c9c] border-b-[2px] border-black">
+              <th className="border-r border-black px-2 py-1.5 text-left font-bold text-black w-10">S.No</th>
+              <th className="border-r border-black px-4 py-1.5 text-center font-bold text-black">Item Description</th>
+              <th className="border-r border-black px-2 py-1.5 text-center font-bold text-black w-12">Qty</th>
+              <th className="border-r border-black px-3 py-1.5 text-center font-bold text-black w-24">Rate</th>
+              <th className="border-r border-black px-2 py-1.5 text-center font-bold text-black w-20">SST %</th>
+              <th className="px-4 py-1.5 text-center font-bold text-black w-28">Total Amount</th>
             </tr>
           </thead>
           <tbody>
             {items.map((item: any, idx: number) => (
-              <tr key={idx}>
-                <td className="border border-black px-4 py-2 text-black font-semibold">{item.description}</td>
-                <td className="border border-black px-4 py-2 text-center text-black font-semibold">
-                  {item.tax_rate || 0}%
-                </td>
-                <td className="border border-black px-4 py-2 text-center text-black font-semibold">
+              <tr key={idx} className="border-b border-black">
+                <td className="border-r border-black px-2 py-2 text-black font-semibold align-top">{idx + 1}</td>
+                <td className="border-r border-black px-4 py-2 text-black font-semibold whitespace-pre-wrap align-top">{item.description}</td>
+                <td className="border-r border-black px-2 py-2 text-center text-black font-semibold align-top">{item.quantity}</td>
+                <td className="border-r border-black px-3 py-2 text-center text-black font-semibold align-top">{item.price.toLocaleString()}</td>
+                <td className="border-r border-black px-2 py-2 text-center text-black font-semibold align-top">{item.tax_rate || 0}%</td>
+                <td className="px-4 py-2 text-center text-black font-semibold align-top">
                   {(item.quantity * item.price + (item.quantity * item.price * (item.tax_rate || 0) / 100)).toLocaleString()}
                 </td>
               </tr>
             ))}
-            {/* Breakdown Rows */}
-            {((editData?.tax_amount ?? gst) > 0 || discount > 0) && (
-              <tr>
-                <td colSpan={2} className="border border-black px-4 py-2 font-bold text-black text-right">Sub Total</td>
-                <td className="border border-black px-4 py-2 text-center font-bold text-black">{subtotal.toLocaleString()}</td>
-              </tr>
-            )}
-            {discount > 0 && (
-              <tr>
-                <td colSpan={2} className="border border-black px-4 py-2 font-bold text-black text-right">Discount</td>
-                <td className="border border-black px-4 py-2 text-center font-bold text-black">- {discount.toLocaleString()}</td>
-              </tr>
-            )}
-            {(editData?.tax_amount ?? gst) > 0 && (
-              <tr>
-                <td colSpan={2} className="border border-black px-4 py-2 font-bold text-black text-right">Total ST Amount (Included in Subtotal)</td>
-                <td className="border border-black px-4 py-2 text-center font-bold text-black">{(editData?.tax_amount ?? gst).toLocaleString()}</td>
-              </tr>
-            )}
-            {/* Total Row */}
-            <tr className="bg-[#b3b3b3]">
-              <td colSpan={2} className="border border-black px-4 py-2 font-bold text-black text-right">Total Amount Receivable</td>
-              <td className="border border-black px-4 py-2 text-center font-bold text-black">{total.toLocaleString()}</td>
-            </tr>
-            {totalPaid > 0 && (
-              <>
-                <tr>
-                  <td colSpan={2} className="border border-black px-4 py-2 font-bold text-black text-right">Amount Paid</td>
-                  <td className="border border-black px-4 py-2 text-center font-bold text-black">{totalPaid.toLocaleString()}</td>
-                </tr>
-                <tr>
-                  <td colSpan={2} className="border border-black px-4 py-2 font-bold text-black text-right">Remaining Balance</td>
-                  <td className="border border-black px-4 py-2 text-center font-bold text-black">{remainingAmount.toLocaleString()}</td>
-                </tr>
-              </>
-            )}
           </tbody>
         </table>
 
+        {/* Summary */}
+        <table className="summary-table text-[12px] font-bold text-black leading-snug">
+          <tbody>
+            <tr><td className="w-40">Subtotal</td><td>{subtotal.toLocaleString()}</td></tr>
+            <tr><td className="w-40">Paid</td><td>{totalPaid.toLocaleString()}</td></tr>
+            <tr><td className="w-40">Discount</td><td>{discount.toLocaleString()}</td></tr>
+            <tr><td className="w-40">Total SST</td><td>{(editData?.tax_amount ?? gst).toLocaleString()}</td></tr>
+            <tr><td className="w-40 pt-1">Total Amount Receivable</td><td className="pt-1">{Math.max(0, total - totalPaid).toLocaleString()}</td></tr>
+          </tbody>
+        </table>
+        <div className="clear-both"></div>
+
         {/* Prompt Payments */}
-        <div className="text-center font-bold text-[#1a5b9b] text-[15px] leading-relaxed mb-32">
+        <div className="text-center font-bold text-[#1f6399] text-[13px] leading-snug mb-12">
           <p>Prompt Payments are Appreciated!</p>
           <p>Thank You</p>
           <p>Accounts Department – Cadre Management Consultants</p>
         </div>
 
+        {/* Bank Details */}
+        <div className="text-[13px] leading-tight space-y-1 mb-24">
+          <div className="font-bold text-black text-[14px] mb-2">Bank Details for Payment:</div>
+          <div className="font-bold text-black">Account Title: Cadre Management Consultants</div>
+          <div className="text-black">Bank Islami Limited</div>
+          <div className="text-black">Gulshan e Iqbal Branch</div>
+          <div className="text-black">Branch Code: 1085</div>
+          <div className="text-black">Account Number: 108500303410001</div>
+          <div className="text-black">IBAN: PK53BKIP0108500303410001</div>
+        </div>
+
         {/* Footer */}
         <div className="absolute bottom-10 left-8 right-8">
-          <div className="border-t-[3px] border-black pt-2 mt-4 text-center text-[12px] text-black">
-            <p className="font-bold">CADRE MANAGEMENT CONSULTANTS | Office No. R-57, Block-6, Gulshan e Iqbal, Karachi</p>
-            <p className="font-semibold">Contact No. +92 21 34804881 | +92 332 2237322 | Email: accounts@cadre-consultants.com</p>
+          <div className="border-t border-black pt-3 text-center text-[11px] text-black">
+            <p className="font-normal mb-1">CADRE MANAGEMENT CONSULTANTS | Office No. R -57, Block 6, Gulshan-e-Iqbal, Karachi</p>
+            <p className="font-normal">Contact No. +92 21 34804881 | +92 332 2237322 Email: info@cadreconsultant.com</p>
           </div>
         </div>
       </div>

@@ -12,6 +12,7 @@ const AgentReportDetail: React.FC = () => {
   const [agent, setAgent] = useState<any>(null);
   const [clients, setClients] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [stepInvoices, setStepInvoices] = useState<any[]>([]);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -20,10 +21,11 @@ const AgentReportDetail: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [staffRes, clientsRes, invRes] = await Promise.all([
+        const [staffRes, clientsRes, invRes, stepInvRes] = await Promise.all([
           api.get('/users/staff'),
           api.get('/clients'),
-          api.get('/finance/invoices')
+          api.get('/finance/invoices'),
+          api.get(`/projects/steps/assigned/${id}`).catch(() => ({ data: [] }))
         ]);
 
         const currentAgent = staffRes.data.find((u: any) => String(u.id) === String(id));
@@ -34,6 +36,7 @@ const AgentReportDetail: React.FC = () => {
         }
         setClients(clientsRes.data.filter((c: any) => String(c.sales_agent_id) === String(id)));
         setInvoices(invRes.data.filter((i: any) => String(i.sales_user_id) === String(id)));
+        setStepInvoices(stepInvRes.data);
       } catch (e: any) {
         console.error('Fetch error:', e);
         if (e.response?.status === 401) {
@@ -59,16 +62,23 @@ const AgentReportDetail: React.FC = () => {
 
   const totalSales = invoices.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0);
   const totalServiceCharges = invoices.reduce((sum, inv) => sum + Number(inv.service_charges_total || 0), 0);
-  const totalCommission = (totalServiceCharges * (agent.commission_percentage || 0)) / 100;
+  const totalSalesCommission = (totalServiceCharges * (agent.commission_percentage || 0)) / 100;
+  const totalProjectCommission = stepInvoices.reduce((sum, inv) => sum + (Number(inv.service_charges_total || 0) * 5 / 100), 0);
+  const totalCommission = totalSalesCommission + totalProjectCommission;
 
-  // Apply Filters to Invoices
-  let filteredInvoices = [...invoices];
+  const combinedCommissions = [
+    ...invoices.map(i => ({ ...i, commType: 'Sales Commission', commAmount: (Number(i.service_charges_total || 0) * (agent.commission_percentage || 0)) / 100, sortDate: new Date(i.created_at || Date.now()).getTime() })),
+    ...stepInvoices.map(i => ({ ...i, commType: 'Project Commission', commAmount: (Number(i.service_charges_total || 0) * 5) / 100, sortDate: new Date(i.created_at || Date.now()).getTime() }))
+  ].sort((a, b) => b.sortDate - a.sortDate);
+
+  // Apply Filters to Commissions
+  let filteredCommissions = [...combinedCommissions];
   if (statusFilter !== 'all') {
-    filteredInvoices = filteredInvoices.filter(i => i.status === statusFilter);
+    filteredCommissions = filteredCommissions.filter(i => i.status === statusFilter);
   }
   if (dateFilter) {
-    filteredInvoices = filteredInvoices.filter(i => {
-      const invoiceDate = new Date(i.created_at).toISOString().split('T')[0];
+    filteredCommissions = filteredCommissions.filter(i => {
+      const invoiceDate = new Date(i.created_at || Date.now()).toISOString().split('T')[0];
       return invoiceDate === dateFilter;
     });
   }
@@ -151,35 +161,38 @@ const AgentReportDetail: React.FC = () => {
             <table className="w-full text-left text-sm">
               <thead className="bg-white border-b border-gray-100">
                 <tr>
+                  <th className="px-6 py-4 font-bold text-gray-500 uppercase text-[10px] tracking-widest">Type</th>
                   <th className="px-6 py-4 font-bold text-gray-500 uppercase text-[10px] tracking-widest">Invoice ID</th>
                   <th className="px-6 py-4 font-bold text-gray-500 uppercase text-[10px] tracking-widest">Client</th>
-                  <th className="px-6 py-4 font-bold text-gray-500 uppercase text-[10px] tracking-widest">Sale Amount</th>
                   <th className="px-6 py-4 font-bold text-gray-500 uppercase text-[10px] tracking-widest">Commission</th>
                   <th className="px-6 py-4 font-bold text-gray-500 uppercase text-[10px] tracking-widest">Status</th>
                   <th className="px-6 py-4 font-bold text-gray-500 uppercase text-[10px] tracking-widest text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filteredInvoices.length === 0 ? (
-                  <tr><td colSpan={6} className="px-6 py-8 text-gray-400 text-center font-medium">No sales found matching criteria</td></tr>
+                {filteredCommissions.length === 0 ? (
+                  <tr><td colSpan={6} className="px-6 py-8 text-gray-400 text-center font-medium">No commissions found matching criteria</td></tr>
                 ) : (
-                  filteredInvoices.map(inv => {
-                    const clientObj = clients.find(c => c.id === inv.client_id);
-                    const invComm = (Number(inv.service_charges_total || 0) * (agent.commission_percentage || 0)) / 100;
+                  filteredCommissions.map((inv, index) => {
+                    const clientObj = clients.find(c => c.id === inv.client_id) || { full_name: inv.client_name };
 
                     return (
-                      <tr key={inv.id} className="hover:bg-gray-50/50 transition-colors">
+                      <tr key={inv.id + '-' + inv.commType + '-' + index} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 text-[10px] font-black uppercase rounded-lg ${inv.commType === 'Sales Commission' ? 'bg-indigo-50 text-indigo-600' : 'bg-fuchsia-50 text-fuchsia-600'}`}>
+                            {inv.commType}
+                          </span>
+                        </td>
                         <td className="px-6 py-4 font-mono">
                           <button
-                            onClick={() => navigate(`/invoices/${inv.id}`)}
+                            onClick={() => navigate(`/invoices/${inv.invoice_id || inv.id}`)}
                             className="text-indigo-600 hover:underline font-bold focus:outline-none"
                           >
-                            #{inv.id.slice(0, 8).toUpperCase()}
+                            #{(inv.invoice_id || inv.id).slice(0, 8).toUpperCase()}
                           </button>
                         </td>
                         <td className="px-6 py-4 font-bold text-gray-900">{clientObj?.full_name || 'Unknown'}</td>
-                        <td className="px-6 py-4 font-black text-gray-600">Rs. {Number(inv.total_amount).toLocaleString()}</td>
-                        <td className="px-6 py-4 font-black text-emerald-600">Rs. {invComm.toLocaleString()}</td>
+                        <td className="px-6 py-4 font-black text-emerald-600">Rs. {inv.commAmount.toLocaleString()}</td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md ${inv.status === 'paid' ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600'}`}>
                             {inv.status}
@@ -187,14 +200,14 @@ const AgentReportDetail: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-right flex justify-end gap-2">
                           <button
-                            onClick={() => navigate(`/invoices/${inv.id}`)}
+                            onClick={() => navigate(`/invoices/${inv.invoice_id || inv.id}`)}
                             className="p-2 text-indigo-600 hover:bg-indigo-50 transition-colors bg-gray-50 rounded-lg inline-flex items-center"
                             title="Edit Invoice"
                           >
                             <Pencil size={16} />
                           </button>
                           <button
-                            onClick={() => handleDownloadInvoice(inv.id)}
+                            onClick={() => handleDownloadInvoice(inv.invoice_id || inv.id)}
                             className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors inline-flex items-center"
                             title="Download Invoice"
                           >

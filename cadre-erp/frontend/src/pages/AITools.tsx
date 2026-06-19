@@ -1,12 +1,46 @@
-import React, { useState } from 'react';
-import { Upload, FileText, AlertTriangle, TrendingUp, TrendingDown, Info, Download, Wallet, Landmark, Activity, DollarSign } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Upload, FileText, AlertTriangle, TrendingUp, TrendingDown, Info, Download, Wallet, Landmark, Activity, DollarSign, FileSpreadsheet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 
 const AITools: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
+  const [instructions, setInstructions] = useState('');
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [progressText, setProgressText] = useState('');
   const [result, setResult] = useState<any>(null);
+
+  useEffect(() => {
+    let interval: any;
+    if (loading) {
+      setProgress(0);
+      setProgressText('Uploading document securely...');
+      interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev < 15) {
+            setProgressText('Uploading document securely...');
+            return prev + 1;
+          } else if (prev < 40) {
+            setProgressText('Reading and parsing pages...');
+            return prev + 1;
+          } else if (prev < 75) {
+            setProgressText('Extracting financial data...');
+            return prev + 1;
+          } else if (prev < 95) {
+            setProgressText('Generating AI insights...');
+            return prev + 1;
+          }
+          return 95; // Hold at 95% until API returns
+        });
+      }, 500); // Slow steady progress
+    } else {
+      if (interval) clearInterval(interval);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [loading]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -32,34 +66,48 @@ const AITools: React.FC = () => {
 
     const formData = new FormData();
     formData.append('statement', file);
+    if (instructions.trim()) {
+      formData.append('instructions', instructions.trim());
+    }
 
     setLoading(true);
     try {
       const response = await api.post('/ai/analyze-bank-statement', formData, {
         timeout: 600000 // 10 minutes timeout for large PDFs (150+ pages)
       });
-      setResult(response.data);
-      toast.success('Analysis complete!');
+      
+      setProgress(100);
+      setProgressText('Finalizing report...');
+      
+      // Wait for a brief moment to show 100% before revealing result
+      setTimeout(() => {
+        setResult(response.data);
+        setLoading(false);
+        toast.success('Analysis complete!');
+      }, 800);
+
     } catch (error: any) {
+      setLoading(false);
+      
+      const toastConfig = { duration: 10000 }; // Show error for 10 seconds so user doesn't miss it
+
       // Better error handling without changing logic
       if (error.code === 'ECONNABORTED') {
-        toast.error('Request timeout. The PDF may be very large — please try again.');
+        toast.error('Request timeout. The PDF may be very large — please try again.', toastConfig);
       } else if (error.response?.status === 502) {
-        toast.error('Server took too long processing the PDF. Please try again — large files need more time on first attempt.');
+        toast.error('Server took too long processing the PDF. Please try again — large files need more time on first attempt.', toastConfig);
       } else if (error.response?.status === 500) {
         const serverMsg = error.response?.data?.message || 'Server error. Please ensure API key is configured correctly.';
         const detail = error.response?.data?.detail || error.response?.data?.raw || '';
-        toast.error(`${serverMsg} ${detail}`);
+        toast.error(`${serverMsg} ${detail}`, toastConfig);
       } else if (error.response?.status === 413) {
-        toast.error('File too large. Please upload a smaller file.');
+        toast.error('File too large. Please upload a smaller file.', toastConfig);
       } else if (!error.response) {
-        toast.error('Network error. Please check if the server is running.');
+        toast.error('Network error. Please check if the server is running.', toastConfig);
       } else {
-        toast.error(error.response?.data?.message || 'Failed to analyze document. Ensure API key is set.');
+        toast.error(error.response?.data?.message || 'Failed to analyze document. Ensure API key is set.', toastConfig);
       }
       console.error('Analysis error:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -125,6 +173,78 @@ const AITools: React.FC = () => {
     });
   };
 
+  const handleExportExcel = () => {
+    if (!result) return;
+    
+    import('xlsx').then(XLSX => {
+      const wb = XLSX.utils.book_new();
+      
+      // 1. Account Details & Financial Summary
+      const summaryData = [
+        ['ACCOUNT CREDENTIALS'],
+        ['Client Name', result.accountCredentials?.clientName],
+        ['Account Number', result.accountCredentials?.accountNumber],
+        ['Bank Name', result.accountCredentials?.bankName],
+        ['IBAN', result.accountCredentials?.iban],
+        ['Account Type', result.accountCredentials?.accountType],
+        ['Statement Period', result.accountCredentials?.statementPeriod],
+        ['Currency', result.accountCredentials?.currency],
+        ['Branch/Location', result.accountCredentials?.branchLocation],
+        [],
+        ['FINANCIAL SUMMARY & TURNOVER'],
+        ['Metric', 'Volume', 'Amount'],
+        ['Opening Balance', '-', result.financialSummary?.openingBalance],
+        ['Total Credit Turnover', result.financialSummary?.creditCount || '-', result.financialSummary?.totalCreditTurnover],
+        ['Total Debit Turnover', result.financialSummary?.debitCount || '-', result.financialSummary?.totalDebitTurnover],
+        ['Closing Balance', '-', result.financialSummary?.closingBalance],
+      ];
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+      // 2. Transactional Breakdowns
+      if (result.transactionalBreakdowns) {
+        const tb = result.transactionalBreakdowns;
+        const txData = [
+          ['Transaction Mode / Category', 'Inward / Outward', 'Total Amount', 'Tax / Operational Relevance'],
+          ['Bank-to-Bank Online Transfers', 'Mixed (IBFT/Raast)', tb.bankToBankTransfers?.amount, tb.bankToBankTransfers?.relevance],
+          ['Cash Deposits', 'Inward', tb.cashDeposits?.amount, tb.cashDeposits?.relevance],
+          ['Cheque Deposits (Clearing)', 'Inward', tb.chequeDeposits?.amount, tb.chequeDeposits?.relevance],
+          ['Remittance (Foreign/Inbound)', 'Inward', tb.remittance?.amount, tb.remittance?.relevance],
+          ['Banking Profits (Mudarabah)', 'Inward', tb.bankingProfits?.amount, tb.bankingProfits?.relevance],
+          ['Withholding Tax (WHT) / FED', 'Outward', tb.withholdingTax?.amount, tb.withholdingTax?.relevance],
+        ];
+        const wsTx = XLSX.utils.aoa_to_sheet(txData);
+        XLSX.utils.book_append_sheet(wb, wsTx, 'Transactions');
+      }
+
+      // 3. Unusual Activity
+      if (result.unusualActivity && result.unusualActivity.length > 0) {
+        const unusualData = [['Title', 'Description']];
+        result.unusualActivity.forEach((activity: any) => {
+          unusualData.push([activity.title, activity.description]);
+        });
+        const wsUnusual = XLSX.utils.aoa_to_sheet(unusualData);
+        XLSX.utils.book_append_sheet(wb, wsUnusual, 'Unusual Activity');
+      }
+
+      // 4. Custom Insights
+      if (result.customInsights && result.customInsights.length > 0) {
+        const customData = [['Title', 'Description']];
+        result.customInsights.forEach((insight: any) => {
+          customData.push([insight.title, insight.description]);
+        });
+        const wsCustom = XLSX.utils.aoa_to_sheet(customData);
+        XLSX.utils.book_append_sheet(wb, wsCustom, 'Custom Insights');
+      }
+
+      XLSX.writeFile(wb, `bank-statement-analytical-report-${new Date().toISOString().split('T')[0]}.xlsx`);
+      toast.success('Excel report downloaded successfully!');
+    }).catch(err => {
+      console.error('Failed to load xlsx', err);
+      toast.error('Failed to generate Excel file.');
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-start justify-between sm:flex-row sm:items-center">
@@ -158,18 +278,47 @@ const AITools: React.FC = () => {
               </div>
             )}
 
-            <button
-              onClick={handleAnalyze}
-              disabled={!file || loading}
-              className={`mt-4 w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
-                ${(!file || loading) ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
-            >
-              {loading ? (
-                <>Analyzing via AdwiseLabs AI...</>
-              ) : (
-                <><Upload className="w-4 h-4 mr-2" /> Analyze Statement</>
-              )}
-            </button>
+            <div className="mt-4">
+              <label htmlFor="instructions" className="block text-sm font-medium text-gray-700 mb-1">
+                Custom Instructions (Optional)
+              </label>
+              <textarea
+                id="instructions"
+                rows={3}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                placeholder="E.g., Highlight transactions over 50,000 PKR, focus on international remittances..."
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+              />
+            </div>
+
+            {loading ? (
+              <div className="mt-4 w-full">
+                <div className="flex justify-between text-xs text-indigo-700 font-bold mb-2">
+                  <span>{progressText}</span>
+                  <span>{progress}%</span>
+                </div>
+                <div className="w-full bg-indigo-100 rounded-full h-3 overflow-hidden">
+                  <div 
+                    className="bg-indigo-600 h-3 rounded-full transition-all duration-300 ease-out flex items-center justify-end pr-1" 
+                    style={{ width: `${progress}%` }}
+                  >
+                    {progress < 100 && progress > 5 && (
+                      <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={handleAnalyze}
+                disabled={!file}
+                className={`mt-4 w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
+                  ${(!file) ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+              >
+                <Upload className="w-4 h-4 mr-2" /> Analyze Statement
+              </button>
+            )}
           </div>
 
           <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-md">
@@ -192,13 +341,22 @@ const AITools: React.FC = () => {
             <div className="space-y-6">
               <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                 <h3 className="text-lg font-medium text-gray-900">Analysis Complete</h3>
-                <button
-                  onClick={handleDownload}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download Summary
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleExportExcel}
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-emerald-700 bg-emerald-50 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors border-emerald-200"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    Export Excel
+                  </button>
+                  <button
+                    onClick={handleDownload}
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download PDF
+                  </button>
+                </div>
               </div>
 
               {/* BEAUTIFUL REPORT LAYOUT */}
@@ -366,14 +524,30 @@ const AITools: React.FC = () => {
                     </div>
                   </section>
 
+                  {/* CUSTOM INSIGHTS (Only if present) */}
+                  {result.customInsights && result.customInsights.length > 0 && (
+                    <section className="pt-4 border-t border-gray-200">
+                      <h2 className="text-[#1a365d] font-bold text-lg mb-4 flex items-center border-l-4 border-purple-500 pl-3 uppercase">
+                        Custom Analysis & Insights
+                      </h2>
+                      <div className="space-y-4">
+                        {result.customInsights.map((insight: any, i: number) => (
+                          <div key={i} className="pl-4 border-l-4 border-purple-400 py-2 bg-purple-50/50 rounded-r-lg p-3">
+                            <h4 className="font-bold text-purple-900 text-md" dangerouslySetInnerHTML={{ __html: insight.title }}></h4>
+                            <div className="text-gray-800 text-sm mt-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: insight.content }}></div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
                   {/* GENERAL SUMMARY */}
                   <section className="pt-4 border-t border-gray-200">
                     <h2 className="text-[#1a365d] font-bold text-lg mb-4 flex items-center border-l-4 border-blue-500 pl-3 uppercase">
-                      4. General Summary & Tax Compliance Notes
+                      General Summary & Tax Compliance Notes
                     </h2>
-                    <p className="text-gray-700 text-sm text-justify leading-relaxed">
-                      {result.generalSummary}
-                    </p>
+                    <div className="text-gray-700 text-sm text-justify leading-relaxed" dangerouslySetInnerHTML={{ __html: result.generalSummary }}>
+                    </div>
                   </section>
 
                   {/* FOOTER */}

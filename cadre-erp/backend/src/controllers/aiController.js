@@ -13,6 +13,8 @@ const analyzeBankStatement = async (req, res) => {
       console.log('No file uploaded');
       return res.status(400).json({ message: 'No PDF file uploaded' });
     }
+    
+    const { instructions } = req.body;
 
     filePath = req.file.path;
     console.log('File uploaded:', filePath);
@@ -31,7 +33,7 @@ const analyzeBankStatement = async (req, res) => {
       return res.status(500).json({ message: 'GEMINI_API_KEY is not configured in .env file' });
     }
 
-    const prompt = `You are a professional financial analyst specializing in Pakistani bank statements. I am providing you with a bank statement PDF.
+    let prompt = `You are a professional financial analyst specializing in Pakistani bank statements. I am providing you with a bank statement PDF.
 
 IMPORTANT: Bank statements come in many different formats. Some have clear "Credit" and "Debit" columns, but many do NOT. You must handle ALL formats including:
 - Statements with only a single "Amount" column (use Dr/Cr markers, +/- signs, or running balance changes to determine if a transaction is credit or debit)
@@ -84,14 +86,25 @@ Return the result EXCLUSIVELY as a valid JSON object matching this exact schema:
       "description": "string (Detailed explanation of the risk or unusual pattern)"
     }
   ],
-  "generalSummary": "string (A detailed paragraph summarizing the bank activity, compliance notes, and source of wealth declarations)"
+  "customInsights": [
+    {
+      "title": "string (Title corresponding to the user's custom instruction)",
+      "content": "string (Detailed response answering the custom instruction. You MAY use HTML tags like <b>, <strong>, <br>, <ul>, <li> for formatting if requested)"
+    }
+  ],
+  "generalSummary": "string (A detailed paragraph summarizing the bank activity, compliance notes, and source of wealth declarations. You MAY use basic HTML like <b> for emphasis.)"
 }
 
 CRITICAL RULES:
 - You MUST always return a valid JSON response regardless of the statement format.
+- All strings MUST be properly escaped. If you use HTML or multiple lines, you MUST escape quotes (\\") and newlines (\\n) inside the JSON string values. DO NOT include literal raw newlines inside strings.
 - If any specific value cannot be found, output "N/A" for strings or "0.00" for numeric fields.
 - If the document format is unusual, do your BEST to extract whatever information is available. Never refuse to analyze.
 - Do not hallucinate data. Only report what you can extract or reasonably infer from the document.`;
+
+    if (instructions) {
+      prompt += `\n\nUSER CUSTOM INSTRUCTIONS:\nThe user has provided the following specific instructions for this analysis. YOU MUST directly address these instructions by filling out the 'customInsights' array in your JSON response. Use HTML tags like <b>, <br>, <ul>, <li>, <h3> to format your response nicely as requested (e.g., if they ask for bold headers, wrap them in <b> or <h3>).\n"${instructions}"`;
+    }
 
     // 1. Upload PDF to Gemini File API
     console.log('Uploading PDF to Gemini File Manager...');

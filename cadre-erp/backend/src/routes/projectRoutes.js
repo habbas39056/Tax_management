@@ -14,8 +14,12 @@ router.post('/services', authorizeRoles('Super Admin', 'Sales'), projectControll
 router.get('/', projectController.getProjects);
 router.get('/:id', projectController.getProjectById);
 router.post('/', authorizeRoles('Super Admin', 'Sales'), projectController.createProject);
+router.delete('/:id', authorizeRoles('Super Admin', 'Sales'), projectController.deleteProject);
+router.put('/:id', authorizeRoles('Super Admin', 'Sales'), projectController.updateProject);
 
 // Steps
+router.get('/steps/all-assigned-invoices', authorizeRoles('Super Admin', 'Sales', 'Operations', 'CSR', 'Accounts'), projectController.getAllAssignedStepInvoices);
+router.get('/steps/assigned/:userId', authorizeRoles('Super Admin', 'Sales', 'Operations', 'CSR', 'Accounts'), projectController.getAssignedStepInvoices);
 router.post('/:project_id/steps', authorizeRoles('Super Admin', 'Sales', 'Operations', 'CSR', 'Accounts'), projectController.createStep);
 router.put('/steps/:step_id', authorizeRoles('Super Admin', 'Sales', 'Operations', 'CSR', 'Accounts'), projectController.updateStep);
 router.delete('/steps/:step_id', authorizeRoles('Super Admin', 'Sales', 'Operations', 'CSR', 'Accounts'), projectController.deleteStep);

@@ -36,7 +36,7 @@ const getProjects = async (req, res) => {
   try {
     let query = `
       SELECT 
-        p.id, p.title, p.status, p.client_id, c.full_name as client_name, s.name as service_name,
+        p.id, p.title, p.status, p.client_id, p.service_id, c.full_name as client_name, s.name as service_name,
         (SELECT COUNT(*) FROM project_steps_new WHERE project_id = p.id) as total_steps,
         (SELECT COUNT(*) FROM project_steps_new WHERE project_id = p.id AND status = 'Completed') as completed_steps,
         (SELECT JSON_ARRAYAGG(JSON_OBJECT('title', title, 'status', status, 'order_index', order_index)) FROM project_steps_new WHERE project_id = p.id) as steps_breakdown
@@ -202,6 +202,39 @@ const createProject = async (req, res) => {
     res.status(500).json({ message: 'Error creating project' });
   } finally {
     connection.release();
+  }
+};
+
+const deleteProject = async (req, res) => {
+  try {
+    await pool.query('DELETE FROM projects WHERE id = ?', [req.params.id]);
+    res.json({ message: 'Project deleted successfully' });
+  } catch (error) {
+    console.error('Delete Project Error:', error);
+    res.status(500).json({ message: 'Error deleting project' });
+  }
+};
+
+const updateProject = async (req, res) => {
+  const { title, client_id, service_id, status } = req.body;
+  try {
+    // Only update fields that are provided
+    const updates = [];
+    const values = [];
+    if (title !== undefined) { updates.push('title = ?'); values.push(title); }
+    if (client_id !== undefined) { updates.push('client_id = ?'); values.push(client_id); }
+    if (service_id !== undefined) { updates.push('service_id = ?'); values.push(service_id); }
+    if (status !== undefined) { updates.push('status = ?'); values.push(status); }
+
+    if (updates.length > 0) {
+      values.push(req.params.id);
+      await pool.query(`UPDATE projects SET ${updates.join(', ')} WHERE id = ?`, values);
+    }
+    
+    res.json({ message: 'Project updated successfully' });
+  } catch (error) {
+    console.error('Update Project Error:', error);
+    res.status(500).json({ message: 'Error updating project' });
   }
 };
 
@@ -438,12 +471,61 @@ const uploadDocument = async (req, res) => {
 // --- Invoices ---
 const linkInvoice = async (req, res) => {
   const { step_id } = req.params;
-  const { invoice_id } = req.body;
+  const invoice_id = req.body.invoice_id;
+  const connection = await pool.getConnection();
   try {
-    await pool.query('INSERT INTO step_invoices (step_id, invoice_id) VALUES (?, ?)', [step_id, invoice_id]);
-    res.status(201).json({ message: 'Invoice linked' });
+    await connection.beginTransaction();
+    const id = require('crypto').randomUUID();
+    await connection.query('INSERT INTO step_invoices (id, step_id, invoice_id) VALUES (?, ?, ?)', [id, step_id, invoice_id]);
+    await logActivity(connection, step_id, req.user.id, 'Linked Invoice', `Linked invoice ID: ${invoice_id}`);
+    await connection.commit();
+    res.status(201).json({ message: 'Invoice linked successfully' });
   } catch (error) {
+    await connection.rollback();
+    console.error(error);
     res.status(500).json({ message: 'Error linking invoice' });
+  } finally {
+    connection.release();
+  }
+};
+
+const getAssignedStepInvoices = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        psn.id as step_id, psn.title as step_title, psn.project_id,
+        p.title as project_title, c.full_name as client_name, c.id as client_id,
+        i.id as invoice_id, i.total_amount, i.service_charges_total, i.status, i.created_at
+      FROM project_steps_new psn
+      JOIN projects p ON psn.project_id = p.id
+      JOIN clients c ON p.client_id = c.id
+      JOIN step_invoices si ON psn.id = si.step_id
+      JOIN invoices i ON si.invoice_id = i.id
+      WHERE psn.assigned_user_id = ?
+    `, [req.params.userId]);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching assigned step invoices' });
+  }
+};
+
+const getAllAssignedStepInvoices = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        psn.id as step_id, psn.title as step_title, psn.project_id, psn.assigned_user_id,
+        p.title as project_title, c.full_name as client_name, c.id as client_id,
+        i.id as invoice_id, i.total_amount, i.service_charges_total, i.status, i.created_at
+      FROM project_steps_new psn
+      JOIN projects p ON psn.project_id = p.id
+      JOIN clients c ON p.client_id = c.id
+      JOIN step_invoices si ON psn.id = si.step_id
+      JOIN invoices i ON si.invoice_id = i.id
+      WHERE psn.assigned_user_id IS NOT NULL
+    `);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching all assigned step invoices' });
   }
 };
 
@@ -518,9 +600,10 @@ const deleteTemplate = async (req, res) => {
 
 module.exports = {
   getServices, createService,
-  getProjects, getProjectById, createProject,
+  getProjects, getProjectById, createProject, deleteProject, updateProject,
   createStep, updateStep, deleteStep,
   addFieldConfig, syncFieldConfigs, saveFieldValues,
   uploadDocument, linkInvoice, addComment,
-  getTemplates, createTemplate, deleteTemplate
+  getTemplates, createTemplate, deleteTemplate,
+  getAssignedStepInvoices, getAllAssignedStepInvoices
 };

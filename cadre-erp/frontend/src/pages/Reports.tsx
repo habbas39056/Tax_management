@@ -16,21 +16,24 @@ const Reports: React.FC = () => {
   const [agents, setAgents] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
+  const [stepInvoices, setStepInvoices] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchReportsData = async () => {
       try {
-        const [clientsRes, staffRes, invoicesRes, projectsRes] = await Promise.all([
+        const [clientsRes, staffRes, invoicesRes, projectsRes, stepInvRes] = await Promise.all([
           api.get('/clients'),
           api.get('/users/staff'),
           api.get('/finance/invoices'),
-          api.get('/projects')
+          api.get('/projects'),
+          api.get('/projects/steps/all-assigned-invoices').catch(() => ({ data: [] }))
         ]);
         
         setClients(clientsRes.data);
         setAgents(staffRes.data.filter((u: any) => u.role_name === 'Sales'));
         setInvoices(invoicesRes.data);
         setProjects(projectsRes.data);
+        setStepInvoices(stepInvRes.data);
       } catch (e) {
         toast.error('Failed to load reports data');
       } finally {
@@ -59,14 +62,7 @@ const Reports: React.FC = () => {
 
   return (
     <div className="animate-fade space-y-8">
-      <div className="flex flex-col items-start justify-between sm:flex-row sm:items-center">
-        <div>
-          <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">System Reports</h2>
-          <p className="text-gray-500 mt-1">Comprehensive overview of clients and sales agents</p>
-        </div>
-      </div>
-
-      <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-3">
+      <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-3 mt-4">
         <Search className="text-gray-400 ml-2" size={20} />
         <input 
           type="text" 
@@ -145,10 +141,17 @@ const Reports: React.FC = () => {
             <div className="space-y-4">
               {filteredAgents.map(agent => {
                 const agentInvoices = invoices.filter(inv => inv.sales_user_id === agent.id);
+                const agentStepInvoices = stepInvoices.filter(inv => inv.assigned_user_id === agent.id);
                 
                 const totalSales = agentInvoices.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0);
-                const totalServiceCharges = agentInvoices.reduce((sum, inv) => sum + Number(inv.service_charges_total || 0), 0);
-                const totalCommission = (totalServiceCharges * (agent.commission_percentage || 0)) / 100;
+                
+                const totalSalesServiceCharges = agentInvoices.reduce((sum, inv) => sum + Number(inv.service_charges_total || 0), 0);
+                const totalProjectServiceCharges = agentStepInvoices.reduce((sum, inv) => sum + Number(inv.service_charges_total || 0), 0);
+                
+                const salesCommission = (totalSalesServiceCharges * (agent.commission_percentage || 0)) / 100;
+                const projectCommission = (totalProjectServiceCharges * 5) / 100;
+                
+                const totalCommission = salesCommission + projectCommission;
 
                 return (
                   <div key={agent.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all">

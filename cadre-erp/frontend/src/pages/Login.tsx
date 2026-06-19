@@ -37,8 +37,8 @@ const Login: React.FC = () => {
 
   return (
     <div className="flex flex-col justify-center min-h-screen py-12 bg-gray-50 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <img src="/logo.png" alt="Logo" className="mx-auto h-28 w-auto object-contain mb-6" />
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center overflow-hidden">
+        <img src="/logo.png" alt="Logo" className="mx-auto h-32 w-auto object-contain transform scale-[1.3] mb-4" />
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">

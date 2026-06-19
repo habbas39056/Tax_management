@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Folder, Search } from 'lucide-react';
+import { Plus, Folder, Search, Trash2, Edit2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Dialog } from '@headlessui/react';
@@ -16,6 +16,8 @@ interface Project {
   id: string;
   title: string;
   status: string;
+  client_id: string;
+  service_id: string;
   client_name: string;
   service_name: string;
   total_steps: number;
@@ -37,6 +39,10 @@ const Projects: React.FC = () => {
   const [serviceFilter, setServiceFilter] = useState('');
 
   const [formData, setFormData] = useState({ client_id: '', service_id: '', title: '', invoice_id: '', custom_service_name: '' });
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState({ client_id: '', service_id: '', title: '', status: '', custom_service_name: '' });
 
   const fetchData = async () => {
     try {
@@ -69,6 +75,66 @@ const Projects: React.FC = () => {
       window.history.replaceState({}, '', '/projects');
     }
   }, []);
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this project?')) {
+      try {
+        await api.delete(`/projects/${id}`);
+        toast.success('Project deleted successfully');
+        fetchData();
+      } catch (error) {
+        toast.error('Failed to delete project');
+      }
+    }
+  };
+
+  const openEditModal = (e: React.MouseEvent, project: Project) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditingProjectId(project.id);
+    setEditFormData({
+      client_id: project.client_id || '',
+      service_id: project.service_id || '',
+      title: project.title || '',
+      status: project.status || 'active',
+      custom_service_name: ''
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProjectId) return;
+    setLoading(true);
+    try {
+      let finalServiceId = editFormData.service_id;
+      if (finalServiceId === 'custom') {
+        if (!editFormData.custom_service_name.trim()) {
+          toast.error('Please enter a custom service name');
+          setLoading(false);
+          return;
+        }
+        const serviceRes = await api.post('/projects/services', { name: editFormData.custom_service_name });
+        finalServiceId = serviceRes.data.id;
+      }
+
+      await api.put(`/projects/${editingProjectId}`, {
+        title: editFormData.title,
+        client_id: editFormData.client_id,
+        service_id: finalServiceId,
+        status: editFormData.status
+      });
+      toast.success('Project updated successfully!');
+      setIsEditModalOpen(false);
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to update project');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,12 +241,32 @@ const Projects: React.FC = () => {
           filteredProjects.map((project) => (
             <Link key={project.id} to={`/projects/${project.id}`} className="block">
               <div className="overflow-hidden transition-all duration-200 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-indigo-500/50">
-                <div className="p-6">
-                  <div className="flex items-center">
-                    <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-                      <Folder className="w-5 h-5" />
+                <div className="p-6 relative group">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                        <Folder className="w-5 h-5" />
+                      </div>
+                      <h3 className="ml-3 text-base font-bold text-gray-900 truncate pr-8">{project.title}</h3>
                     </div>
-                    <h3 className="ml-3 text-base font-bold text-gray-900 truncate">{project.title}</h3>
+                    {(user?.role === 'Super Admin' || user?.role === 'Sales') && (
+                      <div className="flex gap-2 absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => openEditModal(e, project)}
+                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="Edit Project"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDelete(e, project.id)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Project"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="mt-4 space-y-1.5">
                     <p className="text-sm text-gray-500"><span className="font-semibold text-gray-700">Client:</span> {project.client_name}</p>
@@ -289,6 +375,53 @@ const Projects: React.FC = () => {
               <div className="flex justify-end pt-4 space-x-3">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md">Cancel</button>
                 <button type="submit" disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md">Create</button>
+              </div>
+            </form>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
+      <Dialog open={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} className="relative z-50">
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="w-full max-w-md p-6 bg-white rounded-xl shadow-2xl">
+            <Dialog.Title className="text-xl font-bold text-gray-900 mb-4">Edit Project</Dialog.Title>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Project Title</label>
+                <input required type="text" value={editFormData.title} onChange={(e) => setEditFormData({...editFormData, title: e.target.value})} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md sm:text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Client</label>
+                <select required value={editFormData.client_id} onChange={(e) => setEditFormData({...editFormData, client_id: e.target.value})} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md sm:text-sm">
+                  <option value="">Select a client</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Service</label>
+                <select required value={editFormData.service_id} onChange={(e) => setEditFormData({...editFormData, service_id: e.target.value})} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md sm:text-sm">
+                  <option value="">Select a service</option>
+                  {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  <option value="custom">+ Add Custom Service...</option>
+                </select>
+              </div>
+              {editFormData.service_id === 'custom' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Custom Service Name *</label>
+                  <input required type="text" value={editFormData.custom_service_name} onChange={(e) => setEditFormData({...editFormData, custom_service_name: e.target.value})} className="block w-full px-3 py-2 mt-1 border border-indigo-200 bg-indigo-50 rounded-md sm:text-sm" placeholder="e.g. Graphic Design" />
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Status</label>
+                <select required value={editFormData.status} onChange={(e) => setEditFormData({...editFormData, status: e.target.value})} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md sm:text-sm">
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                  <option value="pending">Pending</option>
+                </select>
+              </div>
+              <div className="flex justify-end pt-4 space-x-3">
+                <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md">Cancel</button>
+                <button type="submit" disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md">Save Changes</button>
               </div>
             </form>
           </Dialog.Panel>
