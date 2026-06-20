@@ -8,6 +8,7 @@ import Client360 from './pages/Client360';
 import Projects from './pages/Projects';
 import ProjectDetails from './pages/ProjectDetails';
 import Invoices from './pages/Invoices';
+import Cashbook from './pages/Cashbook';
 import Commissions from './pages/Commissions';
 import AITools from './pages/AITools';
 import KnowledgeBase from './pages/ai-agents/KnowledgeBase';
@@ -76,6 +77,7 @@ function AppRoutes() {
         <Route path="projects/:projectId/steps/:stepId" element={<StepEditor />} />
         <Route path="invoices" element={<Invoices />} />
         <Route path="invoices/:id" element={<InvoiceDetails />} />
+        <Route path="cashbook" element={<Cashbook />} />
         <Route path="commissions" element={<Commissions />} />
         <Route path="reports" element={<Reports />} />
         <Route path="reports/client/:id" element={<ClientReportDetail />} />

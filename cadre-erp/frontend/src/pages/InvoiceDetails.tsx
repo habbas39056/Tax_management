@@ -67,9 +67,21 @@ const InvoiceDetails: React.FC = () => {
     amount: '',
     payment_date: new Date().toISOString().split('T')[0],
     payment_mode: 'Bank Transfer',
+    bank: '',
     transaction_id: '',
     notes: ''
   });
+
+  const [banks, setBanks] = useState<any[]>([]);
+
+  const fetchBanks = async () => {
+    try {
+      const res = await api.get('/banks');
+      setBanks(res.data);
+    } catch (error) {
+      console.error('Failed to fetch banks', error);
+    }
+  };
 
   const fetchPayments = async () => {
     try {
@@ -93,6 +105,7 @@ const InvoiceDetails: React.FC = () => {
         amount: '',
         payment_date: new Date().toISOString().split('T')[0],
         payment_mode: 'Bank Transfer',
+        bank: '',
         transaction_id: '',
         notes: ''
       });
@@ -137,6 +150,7 @@ const InvoiceDetails: React.FC = () => {
     fetchClients();
     fetchAgents();
     fetchServices();
+    fetchBanks();
   }, [id]);
 
   useEffect(() => {
@@ -461,16 +475,33 @@ const InvoiceDetails: React.FC = () => {
                               <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">* Payment Mode</label>
                               <select 
                                 value={paymentData.payment_mode}
-                                onChange={e => setPaymentData({...paymentData, payment_mode: e.target.value})}
+                                onChange={e => {
+                                  const newMode = e.target.value;
+                                  setPaymentData({...paymentData, payment_mode: newMode, bank: newMode === 'Cash' ? '' : paymentData.bank});
+                                }}
                                 className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none"
                               >
-                                <option>Bank Al Falah</option>
-                                <option>HBL</option>
-                                <option>Cash</option>
-                                <option>Check</option>
-                                <option>Bank Transfer</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="Cheque">Cheque</option>
+                                <option value="Online">Online</option>
                               </select>
                             </div>
+                            {paymentData.payment_mode !== 'Cash' && (
+                              <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">* Bank Name</label>
+                                <select
+                                  value={paymentData.bank}
+                                  onChange={e => setPaymentData({ ...paymentData, bank: e.target.value })}
+                                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none"
+                                >
+                                  <option value="">Select Managed Bank...</option>
+                                  {banks.map(b => (
+                                    <option key={b.id} value={b.name}>{b.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
                           </div>
 
                           {/* Right Column */}
@@ -525,7 +556,10 @@ const InvoiceDetails: React.FC = () => {
                                           <div className="w-6 h-6 bg-indigo-50 rounded flex items-center justify-center text-indigo-600">
                                             <CreditCard size={14} />
                                           </div>
-                                          <span className="text-sm font-black text-gray-900">{p.payment_mode}</span>
+                                          <div className="flex flex-col">
+                                            <span className="text-sm font-black text-gray-900">{p.payment_mode}</span>
+                                            {p.bank && <span className="text-[10px] font-bold text-indigo-600">{p.bank}</span>}
+                                          </div>
                                         </div>
                                       </td>
                                       <td className="px-6 py-4 text-sm font-bold text-gray-600">{new Date(p.payment_date).toLocaleDateString()}</td>
@@ -1134,7 +1168,7 @@ const InvoiceDetails: React.FC = () => {
       {/* Exact Print Layout matching the user's image */}
       <div className="print-layout print-only bg-white text-black p-10 relative min-h-screen font-sans">
         {/* Header */}
-        <div className="flex justify-between items-end mb-8">
+        <div className="flex justify-between items-end mb-8 relative">
           <div className="w-1/2">
             <img src="/logo.png" alt="Logo" className="w-[320px] h-auto object-contain -ml-4" />
           </div>
@@ -1192,7 +1226,7 @@ const InvoiceDetails: React.FC = () => {
             <tr><td className="w-40">Paid</td><td>{totalPaid.toLocaleString()}</td></tr>
             <tr><td className="w-40">Discount</td><td>{discount.toLocaleString()}</td></tr>
             <tr><td className="w-40">Total SST</td><td>{(editData?.tax_amount ?? gst).toLocaleString()}</td></tr>
-            <tr><td className="w-40 pt-1">Total Amount Receivable</td><td className="pt-1">{Math.max(0, total - totalPaid).toLocaleString()}</td></tr>
+            <tr><td className="w-40 pt-1">Total Amount Receivable</td><td className="pt-1">{Math.max(0, total - totalPaid) === 0 ? <span className="text-green-600 font-black uppercase tracking-wider">Paid</span> : Math.max(0, total - totalPaid).toLocaleString()}</td></tr>
           </tbody>
         </table>
         <div className="clear-both"></div>

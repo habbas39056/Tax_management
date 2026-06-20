@@ -285,14 +285,14 @@ const getCommissions = async (req, res) => {
 };
 
 const recordPayment = async (req, res) => {
-  const { invoice_id, amount, payment_date, payment_mode, transaction_id, notes } = req.body;
+  const { invoice_id, amount, payment_date, payment_mode, bank, transaction_id, notes } = req.body;
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
     const id = require('crypto').randomUUID();
     await connection.query(
-      'INSERT INTO invoice_payments (id, invoice_id, amount, payment_date, payment_mode, transaction_id, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [id, invoice_id, amount, payment_date, payment_mode, transaction_id, notes]
+      'INSERT INTO invoice_payments (id, invoice_id, amount, payment_date, payment_mode, bank, transaction_id, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, invoice_id, amount, payment_date, payment_mode, bank || null, transaction_id, notes]
     );
 
     await updateInvoiceStatus(invoice_id, connection);

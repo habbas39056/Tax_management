@@ -12,6 +12,8 @@ const userRoutes = require('./routes/userRoutes');
 const clientPortalRoutes = require('./routes/clientPortalRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const leadRoutes = require('./routes/leadRoutes');
+const cashbookRoutes = require('./routes/cashbookRoutes');
+const bankRoutes = require('./routes/bankRoutes');
 const { runDueMilestoneCheck } = require('./services/automationService');
 
 const path = require('path');
@@ -47,6 +49,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/portal', clientPortalRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/leads', leadRoutes);
+app.use('/api/cashbook', cashbookRoutes);
+app.use('/api/banks', bankRoutes);
 
 // Serve Frontend static files
 const frontendPath = path.join(__dirname, '../../frontend/dist');

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, User, LogOut } from 'lucide-react';
+import { Bell, User, LogOut, BookOpen } from 'lucide-react';
 import { Menu, Popover, Transition } from '@headlessui/react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -48,12 +48,20 @@ const Navbar: React.FC = () => {
     }
   };
 
-  let headerTitle = "System Overview";
+  let headerTitle: React.ReactNode = "System Overview";
   let headerSubtitle = `Welcome back, ${user?.name || 'User'}`;
 
   if (location.pathname === '/reports') {
     headerTitle = "System Reports";
     headerSubtitle = "Comprehensive overview of clients and sales agents";
+  } else if (location.pathname === '/cashbook') {
+    headerTitle = (
+      <span className="flex items-center gap-2">
+        <BookOpen className="w-5 h-5 text-indigo-600" />
+        Cashbook
+      </span>
+    );
+    headerSubtitle = "Manage daily receipts, payments, and banks";
   }
 
   return (

@@ -54,8 +54,14 @@ const Dashboard: React.FC = () => {
       
       invoices.forEach((inv: any) => {
         totalRevenue += Number(inv.total_amount) || 0;
-        if (inv.status === 'unpaid') {
-          totalOutstanding += Number(inv.total_amount) || 0;
+        
+        const amountPaid = Number(inv.amount_paid) || 0;
+        const totalAmount = Number(inv.total_amount) || 0;
+        const remaining = Math.max(0, totalAmount - amountPaid);
+        
+        totalOutstanding += remaining;
+        
+        if (remaining > 0) {
           unpaidCount++;
         } else {
           paidCount++;

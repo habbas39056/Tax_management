@@ -6,6 +6,7 @@ import {
   Briefcase, 
   FileText, 
   DollarSign, 
+  BookOpen,
   Settings, 
   Bot,
   Shield,
@@ -37,6 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
       { name: 'Clients', path: '/clients', icon: Users, roles: ['Super Admin', 'Sales', 'CSR'] },
       { name: 'Projects', path: '/projects', icon: Briefcase, roles: ['Super Admin', 'Sales', 'Operations'] },
       { name: 'Invoices', path: '/invoices', icon: FileText, roles: ['Super Admin', 'Accounts', 'Sales'] },
+      { name: 'Cashbook', path: '/cashbook', icon: BookOpen, roles: ['Super Admin', 'Accounts', 'Operations'] },
       { name: 'Commissions', path: '/commissions', icon: DollarSign, roles: ['Super Admin', 'Accounts'] },
       { name: 'Reports', path: '/reports', icon: Layers, roles: ['Super Admin', 'Accounts'] },
       { 
@@ -57,7 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
   const navItems = getNavItems();
 
   return (
-    <div className="flex flex-col w-72 bg-white h-full border-r border-gray-100 shadow-sm transition-all duration-300">
+    <div className="flex flex-col w-72 bg-white h-full border-r border-gray-100 shadow-sm transition-all duration-300 no-print">
       <div className="flex items-center justify-center py-6 border-b border-gray-50 px-8">
         <img src="/logo.png" alt="Logo" className="w-56 h-auto object-contain scale-[1.3] transform origin-center" />
       </div>
