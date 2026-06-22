@@ -347,7 +347,7 @@ const ProjectDetails: React.FC = () => {
                             <Upload size={14} /> Upload File
                           </button>
                           {step.documents?.length > 0 ? step.documents.map((doc: any) => (
-                            <a key={doc.id} href={`http://localhost:5000/api/uploads/steps/${doc.file_name}`} target="_blank" rel="noreferrer"
+                            <a key={doc.id} href={`/uploads/steps/${doc.file_name}`} target="_blank" rel="noreferrer"
                               className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
                               <div className="flex items-center gap-2 overflow-hidden">
                                 <FileText size={16} className="text-indigo-600 shrink-0" />

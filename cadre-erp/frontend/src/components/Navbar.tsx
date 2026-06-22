@@ -139,7 +139,7 @@ const Navbar: React.FC = () => {
         <Menu as="div" className="relative">
           <Menu.Button className="flex items-center gap-3 p-1.5 rounded-2xl hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100 focus:outline-none">
             {user?.profile_image ? (
-              <img src={`http://localhost:5000/api/uploads/profiles/${user.profile_image}`} alt={user.name} className="w-10 h-10 rounded-xl object-cover shadow-md shadow-indigo-100" />
+              <img src={`/uploads/profiles/${user.profile_image}`} alt={user.name} className="w-10 h-10 rounded-xl object-cover shadow-md shadow-indigo-100" />
             ) : (
               <div className="flex items-center justify-center w-10 h-10 text-white bg-indigo-600 rounded-xl shadow-md shadow-indigo-100 font-bold">
                 {user?.name?.charAt(0).toUpperCase() || 'A'}

@@ -303,7 +303,7 @@ const ClientProjectDetail: React.FC = () => {
                                         <p className="text-[10px] text-emerald-600 font-bold">{field.field_value.split('/').pop()}</p>
                                       </div>
                                     </div>
-                                    <a href={`http://localhost:5000/api/uploads/steps/${field.field_value}`} target="_blank" rel="noreferrer" 
+                                    <a href={`/uploads/steps/${field.field_value}`} target="_blank" rel="noreferrer" 
                                       className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-lg">
                                       <Download size={16} />
                                     </a>

@@ -137,7 +137,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
       <div className="p-6 border-t border-gray-50 space-y-3">
         <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
           {user?.profile_image ? (
-            <img src={`http://localhost:5000/api/uploads/profiles/${user.profile_image}`} alt={user.name} className="w-10 h-10 rounded-full object-cover shadow-sm" />
+            <img src={`/uploads/profiles/${user.profile_image}`} alt={user.name} className="w-10 h-10 rounded-full object-cover shadow-sm" />
           ) : (
             <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold">
               {user?.name?.charAt(0).toUpperCase() || 'A'}

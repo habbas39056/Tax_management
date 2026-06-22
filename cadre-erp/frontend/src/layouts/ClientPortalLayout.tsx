@@ -200,7 +200,7 @@ const ClientPortalLayout: React.FC = () => {
             </Popover>
             <div className="cp-topbar__user" onClick={() => navigate('/portal/settings')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
               {user?.profile_image ? (
-                <img src={`http://localhost:5000/api/uploads/profiles/${user.profile_image}`} alt={user.name} style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+                <img src={`/uploads/profiles/${user.profile_image}`} alt={user.name} style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
               ) : (
                 <User size={16} />
               )}

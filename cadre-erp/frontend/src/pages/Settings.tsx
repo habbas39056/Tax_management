@@ -50,7 +50,7 @@ const Settings: React.FC = () => {
             address: res.data.address || '',
             profile_image: res.data.profile_image || ''
           });
-          if (res.data.profile_image) setPreviewImage(`http://localhost:5000/api/uploads/profiles/${res.data.profile_image}`);
+          if (res.data.profile_image) setPreviewImage(`/uploads/profiles/${res.data.profile_image}`);
           
           // Sync context in case it's missing profile_image from an old session
           if (!user?.profile_image && res.data.profile_image) {
@@ -66,7 +66,7 @@ const Settings: React.FC = () => {
             address: res.data.address || '',
             profile_image: res.data.profile_image || ''
           });
-          if (res.data.profile_image) setPreviewImage(`http://localhost:5000/api/uploads/profiles/${res.data.profile_image}`);
+          if (res.data.profile_image) setPreviewImage(`/uploads/profiles/${res.data.profile_image}`);
           
           // Sync context in case it's missing profile_image from an old session
           if ((!user?.profile_image && res.data.profile_image) || user?.name !== res.data.name) {
