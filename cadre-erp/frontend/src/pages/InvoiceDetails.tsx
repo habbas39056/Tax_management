@@ -1250,7 +1250,8 @@ const InvoiceDetails: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="absolute bottom-10 left-8 right-8">
+        <div className="h-[200px] w-full" aria-hidden="true"></div>
+        <div className="w-full">
           <div className="border-t border-black pt-3 text-center text-[11px] text-black">
             <p className="font-normal mb-1">CADRE MANAGEMENT CONSULTANTS | Office No. R -57, Block 6, Gulshan-e-Iqbal, Karachi</p>
             <p className="font-normal">Contact No. +92 21 34804881 | +92 332 2237322 Email: info@cadreconsultant.com</p>
