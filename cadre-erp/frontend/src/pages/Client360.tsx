@@ -23,12 +23,13 @@ export default function Client360() {
 
   // Form State
   const [formData, setFormData] = useState({
-    full_name: '', cnic: '', whatsapp_number: '', portal_username: '', portal_password: '', sales_user_id: '', commission_rate: 0
+    full_name: '', cnic: '', whatsapp_number: '', portal_username: '', portal_password: '', sales_user_id: '', commission_rate: 0, customer_type: ''
   });
 
   // Notes Modal State
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [noteForm, setNoteForm] = useState({ id: '', content: '' });
+  const [showCustomType, setShowCustomType] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -54,8 +55,10 @@ export default function Client360() {
         portal_username: clientRes.data.portal_username || '',
         portal_password: '',
         sales_user_id: clientRes.data.sales_user_id || '',
-        commission_rate: clientRes.data.commission_rate || 0
+        commission_rate: clientRes.data.commission_rate || 0,
+        customer_type: clientRes.data.customer_type || ''
       });
+      setShowCustomType(clientRes.data.customer_type ? !['Salaried', 'Business', 'NRP', 'FTR', 'Pension', 'PVT', 'SMC'].includes(clientRes.data.customer_type) : false);
 
       // Filter projects and invoices by this client
       setProjects(projectsRes.data.filter((p: any) => p.client_id === id));
@@ -159,6 +162,42 @@ export default function Client360() {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Full Name</label>
                 <input required type="text" value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Customer Type</label>
+                <select 
+                  value={showCustomType ? 'Custom' : formData.customer_type}
+                  onChange={(e) => {
+                    if (e.target.value === 'Custom') {
+                      setShowCustomType(true);
+                      setFormData({ ...formData, customer_type: '' });
+                    } else {
+                      setShowCustomType(false);
+                      setFormData({ ...formData, customer_type: e.target.value });
+                    }
+                  }}
+                  className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                >
+                  <option value="">Select Type</option>
+                  <option value="Salaried">Salaried</option>
+                  <option value="Business">Business</option>
+                  <option value="NRP">NRP</option>
+                  <option value="FTR">FTR</option>
+                  <option value="Pension">Pension</option>
+                  <option value="PVT">PVT</option>
+                  <option value="SMC">SMC</option>
+                  <option value="Custom">Custom...</option>
+                </select>
+                {showCustomType && (
+                  <input 
+                    type="text" 
+                    value={formData.customer_type} 
+                    onChange={e => setFormData({ ...formData, customer_type: e.target.value })} 
+                    className="block w-full px-3 py-2 mt-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
+                    placeholder="Enter custom type..." 
+                    required
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">CNIC Number</label>

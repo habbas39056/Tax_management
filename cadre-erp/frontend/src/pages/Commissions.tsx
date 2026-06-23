@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign, Search, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 const Commissions: React.FC = () => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [commissions, setCommissions] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,6 +85,10 @@ const Commissions: React.FC = () => {
           }
         });
 
+        if (user?.role === 'Sales') {
+          allCommissions = allCommissions.filter(c => c.agentId === user.id);
+        }
+
         // Sort by date descending
         allCommissions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setCommissions(allCommissions);
@@ -95,7 +101,7 @@ const Commissions: React.FC = () => {
     };
 
     fetchCommissions();
-  }, []);
+  }, [user?.id, user?.role]);
 
   const filteredCommissions = commissions.filter(c => {
     // Type Filter

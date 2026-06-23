@@ -14,6 +14,7 @@ interface Client {
   whatsapp_number: string;
   portal_username: string;
   sales_user_id?: string;
+  customer_type?: string;
 }
 
 const Clients: React.FC = () => {
@@ -23,6 +24,7 @@ const Clients: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAgent, setSelectedAgent] = useState('');
+  const [showCustomType, setShowCustomType] = useState(false);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -31,7 +33,8 @@ const Clients: React.FC = () => {
     whatsapp_number: '',
     portal_username: '',
     portal_password: '',
-    sales_user_id: ''
+    sales_user_id: '',
+    customer_type: ''
   });
   
   const [editingClient, setEditingClient] = useState<Client | null>(null);
@@ -80,7 +83,8 @@ const Clients: React.FC = () => {
 
       setIsModalOpen(false);
       setEditingClient(null);
-      setFormData({ full_name: '', cnic: '', whatsapp_number: '', portal_username: '', portal_password: '', sales_user_id: '' });
+      setShowCustomType(false);
+      setFormData({ full_name: '', cnic: '', whatsapp_number: '', portal_username: '', portal_password: '', sales_user_id: '', customer_type: '' });
       fetchClients();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to save client');
@@ -91,7 +95,8 @@ const Clients: React.FC = () => {
 
   const openAddModal = () => {
     setEditingClient(null);
-    setFormData({ full_name: '', cnic: '', whatsapp_number: '', portal_username: '', portal_password: '', sales_user_id: '' });
+    setFormData({ full_name: '', cnic: '', whatsapp_number: '', portal_username: '', portal_password: '', sales_user_id: '', customer_type: '' });
+    setShowCustomType(false);
     setIsModalOpen(true);
   };
 
@@ -103,8 +108,10 @@ const Clients: React.FC = () => {
       whatsapp_number: client.whatsapp_number,
       portal_username: client.portal_username,
       portal_password: '', // Don't pre-fill password for security/UX
-      sales_user_id: client.sales_user_id || ''
+      sales_user_id: client.sales_user_id || '',
+      customer_type: client.customer_type || ''
     });
+    setShowCustomType(client.customer_type ? !['Salaried', 'Business', 'NRP', 'FTR', 'Pension', 'PVT', 'SMC'].includes(client.customer_type) : false);
     setIsModalOpen(true);
   };
 
@@ -267,6 +274,42 @@ const Clients: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Full Name</label>
                 <input required type="text" name="full_name" value={formData.full_name} onChange={handleInputChange} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm" placeholder="John Doe" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Customer Type</label>
+                <select 
+                  value={showCustomType ? 'Custom' : formData.customer_type}
+                  onChange={(e) => {
+                    if (e.target.value === 'Custom') {
+                      setShowCustomType(true);
+                      setFormData({ ...formData, customer_type: '' });
+                    } else {
+                      setShowCustomType(false);
+                      setFormData({ ...formData, customer_type: e.target.value });
+                    }
+                  }}
+                  className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+                >
+                  <option value="">Select Type</option>
+                  <option value="Salaried">Salaried</option>
+                  <option value="Business">Business</option>
+                  <option value="NRP">NRP</option>
+                  <option value="FTR">FTR</option>
+                  <option value="Pension">Pension</option>
+                  <option value="PVT">PVT</option>
+                  <option value="SMC">SMC</option>
+                  <option value="Custom">Custom...</option>
+                </select>
+                {showCustomType && (
+                  <input 
+                    type="text" 
+                    value={formData.customer_type} 
+                    onChange={e => setFormData({ ...formData, customer_type: e.target.value })} 
+                    className="block w-full px-3 py-2 mt-2 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm" 
+                    placeholder="Enter custom type..." 
+                    required
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">CNIC Number</label>

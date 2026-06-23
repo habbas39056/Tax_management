@@ -4,7 +4,7 @@ import { Check, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 
-const AVAILABLE_MODULES = ['Dashboard', 'Invoices', 'Clients', 'Projects', 'Staff Management', 'Reports', 'AI Tools'];
+const AVAILABLE_MODULES = ['Dashboard', 'Clients', 'Projects', 'Invoices', 'Cashbook', 'Commissions', 'Reports', 'AI Agents', 'Staff Management', 'Settings'];
 
 const Staff: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
@@ -14,6 +14,7 @@ const Staff: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    username: '',
     password: '',
     role_id: '',
     commission_percentage: '0',
@@ -45,13 +46,9 @@ const Staff: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const payload = {
-        ...formData,
-        username: formData.email.split('@')[0] // auto-generate username
-      };
-      await api.post('/users', payload);
+      await api.post('/users', formData);
       toast.success('Employee created successfully!');
-      setFormData({ name: '', email: '', password: '', role_id: '', commission_percentage: '0', module_access: [] });
+      setFormData({ name: '', email: '', username: '', password: '', role_id: '', commission_percentage: '0', module_access: [] });
       fetchData();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to create employee');
@@ -71,8 +68,12 @@ const Staff: React.FC = () => {
               <input required type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm font-bold text-gray-900 outline-none focus:border-indigo-500 focus:bg-white transition-colors" />
             </div>
             <div>
-              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Email *</label>
-              <input required type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm font-bold text-gray-900 outline-none focus:border-indigo-500 focus:bg-white transition-colors" />
+              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Email</label>
+              <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm font-bold text-gray-900 outline-none focus:border-indigo-500 focus:bg-white transition-colors" />
+            </div>
+            <div>
+              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Username *</label>
+              <input required type="text" name="username" value={formData.username} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm font-bold text-gray-900 outline-none focus:border-indigo-500 focus:bg-white transition-colors" />
             </div>
             <div>
               <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Password *</label>
@@ -139,6 +140,7 @@ const Staff: React.FC = () => {
               <tr>
                 <th className="px-6 py-4 text-[11px] font-black text-gray-400 uppercase tracking-widest">Name</th>
                 <th className="px-6 py-4 text-[11px] font-black text-gray-400 uppercase tracking-widest">Email</th>
+                <th className="px-6 py-4 text-[11px] font-black text-gray-400 uppercase tracking-widest">Username</th>
                 <th className="px-6 py-4 text-[11px] font-black text-gray-400 uppercase tracking-widest">Role</th>
                 <th className="px-6 py-4 text-[11px] font-black text-gray-400 uppercase tracking-widest">Access</th>
                 <th className="px-6 py-4 text-[11px] font-black text-gray-400 uppercase tracking-widest text-center">Actions</th>
@@ -157,6 +159,7 @@ const Staff: React.FC = () => {
                     <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-6 py-4 text-sm font-bold text-gray-900">{user.name}</td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-500">{user.email}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-500">{user.username}</td>
                       <td className="px-6 py-4 text-sm font-bold text-gray-700">{user.role_name}</td>
                       <td className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
                         {accessList.length > 0 ? (

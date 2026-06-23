@@ -8,6 +8,7 @@ interface User {
   email: string;
   role: string;
   profile_image?: string;
+  module_access?: string[];
 }
 
 interface AuthContextType {

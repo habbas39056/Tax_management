@@ -90,7 +90,7 @@ const getUserById = async (req, res) => {
   const { id } = req.params;
   try {
     const [users] = await pool.query(`
-      SELECT u.id, u.name, u.email, u.username, u.is_active, u.commission_percentage, u.role_id, r.name as role_name 
+      SELECT u.id, u.name, u.email, u.username, u.is_active, u.commission_percentage, u.role_id, u.module_access, r.name as role_name 
       FROM users u
       JOIN roles r ON u.role_id = r.id
       WHERE u.id = ?
@@ -105,20 +105,20 @@ const getUserById = async (req, res) => {
 
 const updateUser = async (req, res) => {
   const { id } = req.params;
-  const { name, email, username, password, role_id, commission_percentage, is_active } = req.body;
+  const { name, email, username, password, role_id, commission_percentage, is_active, module_access } = req.body;
 
   try {
     if (password && password.trim() !== '') {
       const salt = await bcrypt.genSalt(10);
       const password_hash = await bcrypt.hash(password, salt);
       await pool.query(
-        'UPDATE users SET name = ?, email = ?, username = ?, password_hash = ?, role_id = ?, commission_percentage = ?, is_active = ? WHERE id = ?',
-        [name, email || null, username || null, password_hash, role_id, commission_percentage || 0, is_active, id]
+        'UPDATE users SET name = ?, email = ?, username = ?, password_hash = ?, role_id = ?, commission_percentage = ?, is_active = ?, module_access = ? WHERE id = ?',
+        [name, email || null, username || null, password_hash, role_id, commission_percentage || 0, is_active, module_access ? JSON.stringify(module_access) : null, id]
       );
     } else {
       await pool.query(
-        'UPDATE users SET name = ?, email = ?, username = ?, role_id = ?, commission_percentage = ?, is_active = ? WHERE id = ?',
-        [name, email || null, username || null, role_id, commission_percentage || 0, is_active, id]
+        'UPDATE users SET name = ?, email = ?, username = ?, role_id = ?, commission_percentage = ?, is_active = ?, module_access = ? WHERE id = ?',
+        [name, email || null, username || null, role_id, commission_percentage || 0, is_active, module_access ? JSON.stringify(module_access) : null, id]
       );
     }
     res.json({ message: 'User updated successfully' });

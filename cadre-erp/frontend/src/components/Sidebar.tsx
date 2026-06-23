@@ -53,7 +53,13 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
       { name: 'Settings', path: '/settings', icon: Settings, roles: ['Super Admin'] },
     ];
 
-    return items.filter(item => item.roles.includes(role));
+    return items.filter(item => {
+      if (role === 'Super Admin') return true;
+      if (user?.module_access && Array.isArray(user.module_access) && user.module_access.length > 0) {
+        return user.module_access.includes(item.name);
+      }
+      return item.roles.includes(role);
+    });
   };
 
   const navItems = getNavItems();
@@ -66,7 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
       <div className="flex flex-col flex-1 overflow-y-auto mt-8">
         <nav className="flex-1 px-4 space-y-1">
           <div className="px-4 mb-4">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[2px] mb-4">Main Menu</p>
+            <p className="text-sm font-extrabold text-gray-800 uppercase tracking-wider mb-4">Main Menu</p>
           </div>
           {navItems.map((item) => (
             <div key={item.name}>
@@ -135,19 +141,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
       </div>
       
       <div className="p-6 border-t border-gray-50 space-y-3">
-        <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
-          {user?.profile_image ? (
-            <img src={`/uploads/profiles/${user.profile_image}`} alt={user.name} className="w-10 h-10 rounded-full object-cover shadow-sm" />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold">
-              {user?.name?.charAt(0).toUpperCase() || 'A'}
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-gray-900 truncate">{user?.name || 'Administrator'}</p>
-            <p className="text-xs text-gray-500 truncate">{user?.role || 'Manage System'}</p>
-          </div>
-        </div>
+
 
         <button 
           onClick={logout}

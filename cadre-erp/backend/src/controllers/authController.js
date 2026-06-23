@@ -41,7 +41,8 @@ const login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role_name,
-        profile_image: user.profile_image
+        profile_image: user.profile_image,
+        module_access: typeof user.module_access === 'string' ? JSON.parse(user.module_access) : (user.module_access || [])
       }
     });
 

@@ -12,6 +12,10 @@ export default defineConfig({
         timeout: 600000, // 10 minutes for large PDF processing
         proxyTimeout: 600000,
       },
+      '/uploads': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
     },
   },
 })

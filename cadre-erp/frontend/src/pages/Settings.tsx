@@ -125,17 +125,13 @@ const Settings: React.FC = () => {
     try {
       let response;
       if (isClient) {
-        response = await api.put('/portal/profile', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        response = await api.put('/portal/profile', formData);
         updateUser({
           name: profileData.full_name,
           profile_image: response.data.profile_image || user?.profile_image
         });
       } else {
-        response = await api.put('/users/profile', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        response = await api.put('/users/profile', formData);
         updateUser({
           name: profileData.name,
           profile_image: response.data.profile_image || user?.profile_image

@@ -48,6 +48,26 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode,
   return <>{children}</>;
 };
 
+// Module-Specific Protected Route
+const ModuleRoute = ({ children, moduleName, fallbackRoles }: { children: React.ReactNode, moduleName: string, fallbackRoles: string[] }) => {
+  const { user } = useAuth();
+  if (user?.role === 'Super Admin') return <>{children}</>;
+  if (user?.role === 'Client') return <Navigate to="/portal" />;
+
+  let hasAccess = false;
+  if (user?.module_access && Array.isArray(user.module_access) && user.module_access.length > 0) {
+    hasAccess = user.module_access.includes(moduleName);
+  } else {
+    hasAccess = fallbackRoles.includes(user?.role || '');
+  }
+
+  if (!hasAccess) {
+    return <Navigate to="/" />;
+  }
+
+  return <>{children}</>;
+};
+
 function AppRoutes() {
   const { user } = useAuth();
 
@@ -70,25 +90,25 @@ function AppRoutes() {
       {/* Staff Portal Routes */}
       <Route path="/" element={<ProtectedRoute allowedRoles={['Super Admin', 'Sales', 'CSR', 'Operations', 'Accounts']}><MainLayout /></ProtectedRoute>}>
         <Route index element={user?.role === 'Client' ? <Navigate to="/portal" /> : <Dashboard />} />
-        <Route path="clients" element={<Clients />} />
-        <Route path="clients/:id" element={<Client360 />} />
-        <Route path="projects" element={<Projects />} />
-        <Route path="projects/:id" element={<ProjectDetails />} />
-        <Route path="projects/:projectId/steps/:stepId" element={<StepEditor />} />
-        <Route path="invoices" element={<Invoices />} />
-        <Route path="invoices/:id" element={<InvoiceDetails />} />
-        <Route path="cashbook" element={<Cashbook />} />
-        <Route path="commissions" element={<Commissions />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="reports/client/:id" element={<ClientReportDetail />} />
-        <Route path="reports/agent/:id" element={<AgentReportDetail />} />
-        <Route path="ai-agents/report" element={<AITools />} />
-        <Route path="ai-agents/knowledge-base" element={<KnowledgeBase />} />
-        <Route path="ai-agents/leads" element={<Leads />} />
-        <Route path="ai-agents/config" element={<AIConfig />} />
-        <Route path="staff" element={<Staff />} />
-        <Route path="staff/:id" element={<Staff360 />} />
-        <Route path="settings" element={<Settings />} />
+        <Route path="clients" element={<ModuleRoute moduleName="Clients" fallbackRoles={['Sales', 'CSR']}><Clients /></ModuleRoute>} />
+        <Route path="clients/:id" element={<ModuleRoute moduleName="Clients" fallbackRoles={['Sales', 'CSR']}><Client360 /></ModuleRoute>} />
+        <Route path="projects" element={<ModuleRoute moduleName="Projects" fallbackRoles={['Sales', 'Operations']}><Projects /></ModuleRoute>} />
+        <Route path="projects/:id" element={<ModuleRoute moduleName="Projects" fallbackRoles={['Sales', 'Operations']}><ProjectDetails /></ModuleRoute>} />
+        <Route path="projects/:projectId/steps/:stepId" element={<ModuleRoute moduleName="Projects" fallbackRoles={['Sales', 'Operations']}><StepEditor /></ModuleRoute>} />
+        <Route path="invoices" element={<ModuleRoute moduleName="Invoices" fallbackRoles={['Accounts', 'Sales']}><Invoices /></ModuleRoute>} />
+        <Route path="invoices/:id" element={<ModuleRoute moduleName="Invoices" fallbackRoles={['Accounts', 'Sales']}><InvoiceDetails /></ModuleRoute>} />
+        <Route path="cashbook" element={<ModuleRoute moduleName="Cashbook" fallbackRoles={['Accounts', 'Operations']}><Cashbook /></ModuleRoute>} />
+        <Route path="commissions" element={<ModuleRoute moduleName="Commissions" fallbackRoles={['Accounts']}><Commissions /></ModuleRoute>} />
+        <Route path="reports" element={<ModuleRoute moduleName="Reports" fallbackRoles={['Accounts']}><Reports /></ModuleRoute>} />
+        <Route path="reports/client/:id" element={<ModuleRoute moduleName="Reports" fallbackRoles={['Accounts']}><ClientReportDetail /></ModuleRoute>} />
+        <Route path="reports/agent/:id" element={<ModuleRoute moduleName="Reports" fallbackRoles={['Accounts']}><AgentReportDetail /></ModuleRoute>} />
+        <Route path="ai-agents/report" element={<ModuleRoute moduleName="AI Agents" fallbackRoles={['Operations']}><AITools /></ModuleRoute>} />
+        <Route path="ai-agents/knowledge-base" element={<ModuleRoute moduleName="AI Agents" fallbackRoles={['Operations']}><KnowledgeBase /></ModuleRoute>} />
+        <Route path="ai-agents/leads" element={<ModuleRoute moduleName="AI Agents" fallbackRoles={['Operations']}><Leads /></ModuleRoute>} />
+        <Route path="ai-agents/config" element={<ModuleRoute moduleName="AI Agents" fallbackRoles={['Operations']}><AIConfig /></ModuleRoute>} />
+        <Route path="staff" element={<ModuleRoute moduleName="Staff Management" fallbackRoles={[]}><Staff /></ModuleRoute>} />
+        <Route path="staff/:id" element={<ModuleRoute moduleName="Staff Management" fallbackRoles={[]}><Staff360 /></ModuleRoute>} />
+        <Route path="settings" element={<ModuleRoute moduleName="Settings" fallbackRoles={[]}><Settings /></ModuleRoute>} />
       </Route>
       
       <Route path="*" element={<Navigate to={user?.role === 'Client' ? '/portal' : '/'} />} />

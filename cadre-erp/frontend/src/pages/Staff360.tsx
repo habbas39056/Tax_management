@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
-import { ArrowLeft, User, Briefcase, Users, Activity } from 'lucide-react';
+import { ArrowLeft, User, Briefcase, Users, Activity, Check } from 'lucide-react';
 import clsx from 'clsx';
+const AVAILABLE_MODULES = ['Dashboard', 'Clients', 'Projects', 'Invoices', 'Cashbook', 'Commissions', 'Reports', 'AI Agents', 'Staff Management', 'Settings'];
 
 export default function Staff360() {
   const { id } = useParams();
@@ -21,7 +22,7 @@ export default function Staff360() {
 
   // Form State
   const [formData, setFormData] = useState({
-    name: '', email: '', username: '', password: '', role_id: '', commission_percentage: 0, is_active: 1
+    name: '', email: '', username: '', password: '', role_id: '', commission_percentage: 0, is_active: 1, module_access: [] as string[]
   });
 
   useEffect(() => {
@@ -48,7 +49,8 @@ export default function Staff360() {
         password: '',
         role_id: staffRes.data.role_id || '',
         commission_percentage: staffRes.data.commission_percentage || 0,
-        is_active: staffRes.data.is_active ? 1 : 0
+        is_active: staffRes.data.is_active ? 1 : 0,
+        module_access: typeof staffRes.data.module_access === 'string' ? JSON.parse(staffRes.data.module_access) : (staffRes.data.module_access || [])
       });
 
       setAssignedClients(assignRes.data.clients || []);
@@ -153,6 +155,32 @@ export default function Staff360() {
                       <option value={1}>Active</option>
                       <option value={0}>Inactive</option>
                     </select>
+                  </div>
+                  
+                  <div className="md:col-span-2 mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">Modules Access</label>
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                      {AVAILABLE_MODULES.map(module => (
+                        <label key={module} className="flex items-center gap-2 cursor-pointer group">
+                          <div className="relative flex items-center justify-center">
+                            <input 
+                              type="checkbox" 
+                              className="peer appearance-none w-4 h-4 border-2 border-gray-300 rounded focus:ring-0 checked:bg-indigo-600 checked:border-indigo-600 transition-colors cursor-pointer"
+                              checked={formData.module_access.includes(module)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setFormData(prev => ({...prev, module_access: [...prev.module_access, module]}));
+                                } else {
+                                  setFormData(prev => ({...prev, module_access: prev.module_access.filter(m => m !== module)}));
+                                }
+                              }}
+                            />
+                            <Check className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" />
+                          </div>
+                          <span className="text-xs font-semibold text-gray-600 group-hover:text-indigo-600 transition-colors">{module}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 </>
               )}
