@@ -106,37 +106,63 @@ CRITICAL RULES:
       prompt += `\n\nUSER CUSTOM INSTRUCTIONS:\nThe user has provided the following specific instructions for this analysis. YOU MUST directly address these instructions by filling out the 'customInsights' array in your JSON response. Use HTML tags like <b>, <br>, <ul>, <li>, <h3> to format your response nicely as requested (e.g., if they ask for bold headers, wrap them in <b> or <h3>).\n"${instructions}"`;
     }
 
-    // 1. Upload PDF to Gemini File API
-    console.log('Uploading PDF to Gemini File Manager...');
-    const fileManager = new GoogleAIFileManager(apiKey);
-    const uploadResult = await fileManager.uploadFile(filePath, {
-      mimeType: "application/pdf",
-      displayName: "Bank Statement",
-    });
-    console.log('Upload successful. File URI:', uploadResult.file.uri);
+    let parts = [];
+    const fileSizeMB = req.file.size / (1024 * 1024);
 
-    // 2. Wait for file to be fully processed (critical for large PDFs 150+ pages)
-    let fileState = uploadResult.file.state;
-    let fileInfo = uploadResult.file;
-    console.log('Initial file state:', fileState);
-    
-    while (fileState === 'PROCESSING') {
-      console.log('File still processing, waiting 5 seconds...');
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      fileInfo = await fileManager.getFile(uploadResult.file.name);
-      fileState = fileInfo.state;
-      console.log('File state:', fileState);
-    }
+    if (fileSizeMB < 18) {
+      console.log(`File size is ${fileSizeMB.toFixed(2)}MB. Sending inline for fast processing...`);
+      const fileData = fs.readFileSync(filePath).toString("base64");
+      parts = [
+        {
+          inlineData: {
+            data: fileData,
+            mimeType: "application/pdf"
+          }
+        },
+        { text: prompt }
+      ];
+    } else {
+      // 1. Upload PDF to Gemini File API for large files
+      console.log(`File size is ${fileSizeMB.toFixed(2)}MB. Uploading PDF to Gemini File Manager...`);
+      const fileManager = new GoogleAIFileManager(apiKey);
+      const uploadResult = await fileManager.uploadFile(filePath, {
+        mimeType: "application/pdf",
+        displayName: "Bank Statement",
+      });
+      console.log('Upload successful. File URI:', uploadResult.file.uri);
 
-    if (fileState === 'FAILED') {
-      console.error('File processing failed');
-      if (filePath && fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      // 2. Wait for file to be fully processed (critical for large PDFs 150+ pages)
+      let fileState = uploadResult.file.state;
+      let fileInfo = uploadResult.file;
+      console.log('Initial file state:', fileState);
+      
+      while (fileState === 'PROCESSING') {
+        console.log('File still processing, waiting 5 seconds...');
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        fileInfo = await fileManager.getFile(uploadResult.file.name);
+        fileState = fileInfo.state;
+        console.log('File state:', fileState);
       }
-      return res.status(400).json({ message: 'Failed to process PDF. The file may be too large or corrupted.' });
-    }
 
-    console.log('File is ACTIVE and ready for analysis');
+      if (fileState === 'FAILED') {
+        console.error('File processing failed');
+        if (filePath && fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+        return res.status(400).json({ message: 'Failed to process PDF. The file may be too large or corrupted.' });
+      }
+
+      console.log('File is ACTIVE and ready for analysis');
+      parts = [
+        {
+          fileData: {
+            mimeType: fileInfo.mimeType,
+            fileUri: fileInfo.uri,
+          },
+        },
+        { text: prompt }
+      ];
+    }
 
     // 3. Call Gemini SDK
     console.log('Calling Gemini API...');
@@ -149,15 +175,7 @@ CRITICAL RULES:
       contents: [
         {
           role: "user",
-          parts: [
-            {
-              fileData: {
-                mimeType: fileInfo.mimeType,
-                fileUri: fileInfo.uri,
-              },
-            },
-            { text: prompt },
-          ],
+          parts: parts,
         },
       ],
       generationConfig: {

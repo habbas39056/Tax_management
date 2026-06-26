@@ -187,8 +187,8 @@ const InvoiceDetails: React.FC = () => {
         return;
       }
 
-      const billFromName = (editData.bill_from_name || 'Adwise Labs').trim();
-      const billFromAddress = (editData.bill_from_address || `A-205 / II Saba Ave, DHA Karachi Phase VIII Zone A Phase VIII\nDefence Housing Authority\nKarachi Sindh\n76500`).trim();
+      const billFromName = (editData.bill_from_name || 'CADRE MANAGEMENT CONSULTANTS').trim();
+      const billFromAddress = (editData.bill_from_address || `Office No. R -57, Block 6, Gulshan-e-Iqbal, Karachi`).trim();
       
       if (!billFromName) {
         toast.error('Bill From Name cannot be empty.');
@@ -615,13 +615,13 @@ const InvoiceDetails: React.FC = () => {
                         {isEditing ? (
                           <div className="space-y-2">
                             <input 
-                              value={editData.bill_from_name || 'Adwise Labs'} 
+                              value={editData.bill_from_name || 'CADRE MANAGEMENT CONSULTANTS'} 
                               onChange={e => setEditData({...editData, bill_from_name: e.target.value})}
                               className="text-lg font-black text-gray-900 bg-transparent border-b border-indigo-200 w-full outline-none focus:border-indigo-500"
                               placeholder="Company Name"
                             />
                             <textarea 
-                              value={editData.bill_from_address || `A-205 / II Saba Ave, DHA Karachi Phase VIII Zone A Phase VIII\nDefence Housing Authority\nKarachi Sindh\n76500`}
+                              value={editData.bill_from_address || `Office No. R -57, Block 6, Gulshan-e-Iqbal, Karachi`}
                               onChange={e => setEditData({...editData, bill_from_address: e.target.value})}
                               className="text-sm text-gray-500 leading-relaxed font-medium bg-transparent border-b border-indigo-100 w-full outline-none focus:border-indigo-400 min-h-[100px] resize-none"
                               placeholder="Address Line 1\nAddress Line 2"
@@ -629,9 +629,9 @@ const InvoiceDetails: React.FC = () => {
                           </div>
                         ) : (
                           <>
-                            <h3 className="text-lg font-black text-gray-900">{invoice.bill_from_name || 'Adwise Labs'}</h3>
+                            <h3 className="text-lg font-black text-gray-900">{invoice.bill_from_name || 'CADRE MANAGEMENT CONSULTANTS'}</h3>
                             <p className="text-sm text-gray-500 leading-relaxed font-medium whitespace-pre-line">
-                              {invoice.bill_from_address || `A-205 / II Saba Ave, DHA Karachi Phase VIII Zone A Phase VIII\nDefence Housing Authority\nKarachi Sindh\n76500`}
+                              {invoice.bill_from_address || `Office No. R -57, Block 6, Gulshan-e-Iqbal, Karachi`}
                             </p>
                           </>
                         )}
@@ -705,7 +705,7 @@ const InvoiceDetails: React.FC = () => {
                     <thead>
                       <tr className="bg-[#F8FAFC] border-b border-gray-100">
                         <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-16 text-center">#</th>
-                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Item</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-full min-w-[200px]">Item</th>
                         <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center w-32 no-print">Category</th>
                         <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right w-24">Qty</th>
                         <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right w-32">Rate</th>
@@ -826,7 +826,7 @@ const InvoiceDetails: React.FC = () => {
                                 const newItems = [...editData.items];
                                 newItems[idx].quantity = Number(e.target.value);
                                 setEditData({...editData, items: newItems});
-                              }} className="w-full bg-transparent border-none focus:ring-0 font-bold text-gray-900 p-0 text-right" />
+                              }} className="w-full min-w-[60px] bg-transparent border-none focus:ring-0 font-bold text-gray-900 p-0 text-right" />
                             ) : (
                               <span className="font-bold text-gray-600">{item.quantity}</span>
                             )}
@@ -837,7 +837,7 @@ const InvoiceDetails: React.FC = () => {
                                 const newItems = [...editData.items];
                                 newItems[idx].price = Number(e.target.value);
                                 setEditData({...editData, items: newItems});
-                              }} className="w-full bg-transparent border-none focus:ring-0 font-bold text-gray-900 p-0 text-right" />
+                              }} className="w-full min-w-[80px] bg-transparent border-none focus:ring-0 font-bold text-gray-900 p-0 text-right" />
                             ) : (
                               item.price.toLocaleString()
                             )}
@@ -849,7 +849,7 @@ const InvoiceDetails: React.FC = () => {
                                    const newItems = [...editData.items];
                                    newItems[idx].tax_rate = Number(e.target.value);
                                    setEditData({...editData, items: newItems});
-                                 }} className="w-12 bg-transparent border-none focus:ring-0 font-bold text-gray-900 p-0 text-right" />
+                                 }} className="w-full min-w-[60px] bg-transparent border-none focus:ring-0 font-bold text-gray-900 p-0 text-right" />
                                  <span>%</span>
                                </div>
                              ) : (
@@ -891,23 +891,7 @@ const InvoiceDetails: React.FC = () => {
                            <span className="text-gray-900 font-black">- Rs. {discount.toLocaleString()}</span>
                          )}
                       </div>
-                      <div className="flex justify-between items-center text-sm font-bold text-gray-500">
-                         <div className="flex items-center gap-2">
-                           <span>SST Percentage</span>
-                           {isEditing ? (
-                             <div className="flex items-center">
-                               <input type="number" value={editData.gst_rate} onChange={e => {
-                                 const newRate = Number(e.target.value);
-                                 const newItems = editData.items.map((i: any) => ({ ...i, tax_rate: newRate }));
-                                 setEditData({...editData, gst_rate: newRate, items: newItems, tax_amount: undefined}); // auto-calculate tax
-                               }} className="w-16 bg-gray-50 border-none rounded p-1 text-right font-black text-gray-900 outline-none" />
-                               <span>%</span>
-                             </div>
-                           ) : (
-                             <span>({invoice.gst_rate || 15}%)</span>
-                           )}
-                         </div>
-                      </div>
+
                       <div className="flex justify-between items-center text-sm font-bold text-gray-500">
                          <span>Tax (Included in Subtotal)</span>
                          {isEditing ? (

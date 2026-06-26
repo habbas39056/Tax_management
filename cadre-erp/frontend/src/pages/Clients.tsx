@@ -177,6 +177,7 @@ const Clients: React.FC = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Name</th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Type</th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">CNIC</th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">WhatsApp</th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Portal User</th>
@@ -197,6 +198,15 @@ const Clients: React.FC = () => {
                           <Link to={`/clients/${client.id}`} className="text-indigo-600 hover:text-indigo-900 hover:underline">
                             {client.full_name}
                           </Link>
+                        </td>
+                        <td className="px-3 py-4 text-sm text-gray-500 whitespace-nowrap">
+                          {client.customer_type ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {client.customer_type}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 italic text-xs">None</span>
+                          )}
                         </td>
                         <td className="px-3 py-4 text-sm text-gray-500 whitespace-nowrap">{client.cnic}</td>
                         <td className="px-3 py-4 text-sm text-gray-500 whitespace-nowrap">{client.whatsapp_number}</td>

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getRoles, getUsers, getStaffUsers, createUser, getUserById, updateUser, getUserActivity, getUserAssignments, updateProfile, getProfile } = require('../controllers/userController');
+const { getRoles, getUsers, getStaffUsers, createUser, getUserById, updateUser, getUserActivity, getUserAssignments, updateProfile, getProfile, deleteUser } = require('../controllers/userController');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 
 router.use(authenticateToken);
@@ -33,6 +33,7 @@ router.get('/', getUsers);
 router.post('/', createUser);
 router.get('/:id', getUserById);
 router.put('/:id', updateUser);
+router.delete('/:id', deleteUser);
 router.get('/:id/activity', getUserActivity);
 router.get('/:id/assignments', getUserAssignments);
 

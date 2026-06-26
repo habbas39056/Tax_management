@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Check, Pencil } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Check, Pencil, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 const AVAILABLE_MODULES = ['Dashboard', 'Clients', 'Projects', 'Invoices', 'Cashbook', 'Commissions', 'Reports', 'AI Agents', 'Staff Management', 'Settings'];
 
 const Staff: React.FC = () => {
+  const { user: currentUser, impersonate } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,6 +57,27 @@ const Staff: React.FC = () => {
       toast.error(error.response?.data?.message || 'Failed to create employee');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to deactivate this employee?')) return;
+    try {
+      await api.delete(`/users/${id}`);
+      toast.success('Employee deactivated successfully');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to deactivate employee');
+    }
+  };
+
+  const handleImpersonate = async (id: string) => {
+    if (currentUser?.role !== 'Super Admin') return;
+    try {
+      await impersonate(id);
+      navigate('/');
+    } catch (error) {
+      // toast error is handled in AuthContext
     }
   };
 
@@ -157,7 +181,15 @@ const Staff: React.FC = () => {
                   
                   return (
                     <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-bold text-gray-900">{user.name}</td>
+                      <td className="px-6 py-4 text-sm font-bold text-gray-900">
+                        {currentUser?.role === 'Super Admin' ? (
+                          <button onClick={() => handleImpersonate(user.id)} className="text-indigo-600 hover:text-indigo-800 hover:underline text-left" title="Click to login as this user">
+                            {user.name}
+                          </button>
+                        ) : (
+                          <span>{user.name}</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-500">{user.email}</td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-500">{user.username}</td>
                       <td className="px-6 py-4 text-sm font-bold text-gray-700">{user.role_name}</td>
@@ -173,9 +205,16 @@ const Staff: React.FC = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <Link to={`/staff/${user.id}`} className="inline-flex items-center justify-center p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                          <Pencil size={16} />
-                        </Link>
+                        <div className="flex items-center justify-center gap-2">
+                          <Link to={`/staff/${user.id}`} className="inline-flex items-center justify-center p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                            <Pencil size={16} />
+                          </Link>
+                          {currentUser?.id !== user.id && (
+                            <button onClick={() => handleDelete(user.id)} className="inline-flex items-center justify-center p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Deactivate User">
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

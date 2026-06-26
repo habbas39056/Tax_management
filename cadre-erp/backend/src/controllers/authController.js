@@ -99,4 +99,46 @@ const clientLogin = async (req, res) => {
   }
 };
 
-module.exports = { login, clientLogin };
+const impersonateUser = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [users] = await pool.query(
+      `SELECT u.*, u.profile_image, r.name as role_name 
+       FROM users u 
+       JOIN roles r ON u.role_id = r.id 
+       WHERE u.id = ? AND u.is_active = 1`, 
+      [id]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'User not found or inactive.' });
+    }
+
+    const user = users[0];
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role_name },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN }
+    );
+
+    res.json({
+      message: 'Impersonation successful',
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role_name,
+        profile_image: user.profile_image,
+        module_access: typeof user.module_access === 'string' ? JSON.parse(user.module_access) : (user.module_access || [])
+      }
+    });
+
+  } catch (error) {
+    console.error('Impersonate error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+module.exports = { login, clientLogin, impersonateUser };

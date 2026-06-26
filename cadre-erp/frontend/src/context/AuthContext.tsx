@@ -16,6 +16,7 @@ interface AuthContextType {
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
   loginClient: (username: string, password: string) => Promise<void>;
+  impersonate: (userId: string) => Promise<void>;
   logout: () => void;
   updateUser: (data: Partial<User>) => void;
   isLoading: boolean;
@@ -84,6 +85,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const impersonate = async (userId: string) => {
+    try {
+      const response = await api.post(`/auth/impersonate/${userId}`);
+      const { token: newToken, user: userData } = response.data;
+      
+      localStorage.setItem('token', newToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      setToken(newToken);
+      setUser(userData);
+      toast.success(`Impersonating ${userData.name}`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Impersonation failed');
+      throw error;
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -101,7 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, loginClient, logout, updateUser, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, loginClient, impersonate, logout, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { login, clientLogin } = require('../controllers/authController');
+const { login, clientLogin, impersonateUser } = require('../controllers/authController');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 
 // Public routes
@@ -16,5 +16,8 @@ router.get('/me', authenticateToken, (req, res) => {
 router.get('/admin-only', authenticateToken, authorizeRoles('Super Admin'), (req, res) => {
   res.json({ message: 'Welcome to the super admin area.' });
 });
+
+// Admin Impersonation route
+router.post('/impersonate/:id', authenticateToken, authorizeRoles('Super Admin'), impersonateUser);
 
 module.exports = router;
