@@ -3,6 +3,7 @@ import { DollarSign, Search, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import Pagination from '../components/Pagination';
 
 const Commissions: React.FC = () => {
   const { user } = useAuth();
@@ -10,6 +11,9 @@ const Commissions: React.FC = () => {
   const [commissions, setCommissions] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'sales' | 'project'>('all');
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchCommissions = async () => {
@@ -117,6 +121,16 @@ const Commissions: React.FC = () => {
     return true;
   });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterType]);
+
+  const totalPages = Math.ceil(filteredCommissions.length / itemsPerPage);
+  const paginatedCommissions = filteredCommissions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const totalEarned = filteredCommissions.reduce((sum, c) => sum + c.earned, 0);
 
   if (loading) {
@@ -187,14 +201,14 @@ const Commissions: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-50">
-              {filteredCommissions.length === 0 ? (
+              {paginatedCommissions.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-16 text-center text-gray-400 font-medium">
                     No commissions found matching your criteria.
                   </td>
                 </tr>
               ) : (
-                filteredCommissions.map((comm) => (
+                paginatedCommissions.map((comm) => (
                   <tr key={comm.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="py-4 pl-6 pr-3 whitespace-nowrap">
                       <div className="flex items-center gap-3">
@@ -230,6 +244,13 @@ const Commissions: React.FC = () => {
               )}
             </tbody>
           </table>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredCommissions.length}
+            itemsPerPage={itemsPerPage}
+          />
         </div>
       </div>
     </div>

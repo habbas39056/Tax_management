@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, BookOpen, Building2, DollarSign, FileText, AlertCircle, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
+import Pagination from '../components/Pagination';
 
 interface CashbookEntry {
   id: string;
@@ -33,6 +34,10 @@ const Cashbook: React.FC = () => {
   const [clients, setClients] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const [isPrinting, setIsPrinting] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const [showBankModal, setShowBankModal] = useState(false);
@@ -79,6 +84,15 @@ const Cashbook: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+    
+    const handleBeforePrint = () => setIsPrinting(true);
+    const handleAfterPrint = () => setIsPrinting(false);
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -234,6 +248,18 @@ const Cashbook: React.FC = () => {
     entry.reference_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     entry.bank?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const totalPages = Math.ceil(displayEntries.length / itemsPerPage);
+  const paginatedEntries = displayEntries.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const renderedEntries = isPrinting ? displayEntries : paginatedEntries;
 
   // Calculate Stats
   const totalExpenses = entries.reduce((sum, entry) => sum + (parseFloat(entry.payment as string) || 0), 0);
@@ -452,14 +478,14 @@ const Cashbook: React.FC = () => {
                     </div>
                   </td>
                 </tr>
-              ) : displayEntries.length === 0 ? (
+              ) : renderedEntries.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
                     No entries found
                   </td>
                 </tr>
               ) : (
-                displayEntries.map((entry) => (
+                renderedEntries.map((entry) => (
                   <tr key={entry.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
                       {new Date(entry.entry_date).toLocaleDateString()}
@@ -513,6 +539,15 @@ const Cashbook: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="no-print">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={displayEntries.length}
+            itemsPerPage={itemsPerPage}
+          />
         </div>
       </div>
 

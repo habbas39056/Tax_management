@@ -62,6 +62,7 @@ const InvoiceDetails: React.FC = () => {
   };
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [payments, setPayments] = useState<any[]>([]);
   const [paymentData, setPaymentData] = useState({
     amount: '',
@@ -92,12 +93,20 @@ const InvoiceDetails: React.FC = () => {
 
   const handleRecordPayment = async () => {
     try {
-      await api.post('/finance/payments', {
-        ...paymentData,
-        invoice_id: id,
-        amount: Number(paymentData.amount)
-      });
-      toast.success('Payment recorded');
+      if (editingPaymentId) {
+        await api.put(`/finance/payments/${editingPaymentId}`, {
+          ...paymentData,
+          amount: Number(paymentData.amount)
+        });
+        toast.success('Payment updated');
+      } else {
+        await api.post('/finance/payments', {
+          ...paymentData,
+          invoice_id: id,
+          amount: Number(paymentData.amount)
+        });
+        toast.success('Payment recorded');
+      }
       setShowPaymentModal(false);
       fetchPayments();
       fetchInvoice();
@@ -109,9 +118,23 @@ const InvoiceDetails: React.FC = () => {
         transaction_id: '',
         notes: ''
       });
+      setEditingPaymentId(null);
     } catch (e) {
-      toast.error('Failed to record payment');
+      toast.error(editingPaymentId ? 'Failed to update payment' : 'Failed to record payment');
     }
+  };
+
+  const handleEditPayment = (payment: any) => {
+    setPaymentData({
+      amount: payment.amount.toString(),
+      payment_date: payment.payment_date ? new Date(payment.payment_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      payment_mode: payment.payment_mode || 'Bank Transfer',
+      bank: payment.bank || '',
+      transaction_id: payment.transaction_id || '',
+      notes: payment.notes || ''
+    });
+    setEditingPaymentId(payment.id);
+    setShowPaymentModal(true);
   };
 
   const handleDeletePayment = async (payId: string) => {
@@ -974,7 +997,18 @@ const InvoiceDetails: React.FC = () => {
                     </div>
                     {user?.role !== 'Client' && (
                       <button
-                        onClick={() => setShowPaymentModal(true)}
+                        onClick={() => {
+                          setEditingPaymentId(null);
+                          setPaymentData({
+                            amount: '',
+                            payment_date: new Date().toISOString().split('T')[0],
+                            payment_mode: 'Bank Transfer',
+                            bank: '',
+                            transaction_id: '',
+                            notes: ''
+                          });
+                          setShowPaymentModal(true);
+                        }}
                         className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-2"
                       >
                         <Plus size={14} />
@@ -1027,13 +1061,22 @@ const InvoiceDetails: React.FC = () => {
                               {user?.role !== 'Client' && (
                                 <td className="px-6 py-4 text-center">
                                   {(user?.role === 'Super Admin' || user?.role === 'Accounts') ? (
-                                    <button
-                                      onClick={() => handleDeletePayment(p.id)}
-                                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                      title="Delete Payment"
-                                    >
-                                      <Trash2 size={16} />
-                                    </button>
+                                    <div className="flex justify-center items-center gap-2">
+                                      <button
+                                        onClick={() => handleEditPayment(p)}
+                                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                        title="Edit Payment"
+                                      >
+                                        <Pencil size={16} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeletePayment(p.id)}
+                                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                        title="Delete Payment"
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </div>
                                   ) : (
                                     <span className="text-xs text-gray-300 font-bold">No Permission</span>
                                   )}
@@ -1053,7 +1096,9 @@ const InvoiceDetails: React.FC = () => {
                     <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 transform transition-all">
                       <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                         <div>
-                          <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">Record Payment</h3>
+                          <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">
+                            {editingPaymentId ? 'Edit Payment' : 'Record Payment'}
+                          </h3>
                           <p className="text-[10px] font-bold text-gray-400 uppercase">Log transaction for INV-{invoice.id?.slice(0, 8)}</p>
                         </div>
                         <button
@@ -1091,7 +1136,7 @@ const InvoiceDetails: React.FC = () => {
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Payment Mode</label>
                             <select
                               value={paymentData.payment_mode}
-                              onChange={e => setPaymentData({ ...paymentData, payment_mode: e.target.value })}
+                              onChange={e => setPaymentData({ ...paymentData, payment_mode: e.target.value, bank: e.target.value !== 'Bank Transfer' ? '' : paymentData.bank })}
                               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:bg-white focus:border-indigo-500 transition-all appearance-none"
                             >
                               <option value="Bank Transfer">Bank Transfer</option>
@@ -1101,6 +1146,22 @@ const InvoiceDetails: React.FC = () => {
                             </select>
                           </div>
                         </div>
+
+                        {paymentData.payment_mode === 'Bank Transfer' && (
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Select Bank</label>
+                            <select
+                              value={paymentData.bank}
+                              onChange={e => setPaymentData({ ...paymentData, bank: e.target.value })}
+                              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:bg-white focus:border-indigo-500 transition-all appearance-none"
+                            >
+                              <option value="">Select a Bank</option>
+                              {banks.map((b: any) => (
+                                <option key={b.id} value={b.name}>{b.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
 
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Transaction ID / Reference</label>
@@ -1137,7 +1198,7 @@ const InvoiceDetails: React.FC = () => {
                           disabled={!paymentData.amount}
                           className="px-5 py-2.5 bg-indigo-600 disabled:opacity-50 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all"
                         >
-                          Save Transaction
+                          {editingPaymentId ? 'Save Changes' : 'Save Transaction'}
                         </button>
                       </div>
                     </div>

@@ -6,6 +6,7 @@ import { Dialog, Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import Pagination from '../components/Pagination';
 
 interface Client {
   id: string;
@@ -25,6 +26,9 @@ const Clients: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAgent, setSelectedAgent] = useState('');
   const [showCustomType, setShowCustomType] = useState(false);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   // Form State
   const [formData, setFormData] = useState({
@@ -124,6 +128,16 @@ const Clients: React.FC = () => {
     return matchesSearch && matchesAgent;
   });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedAgent]);
+
+  const totalPages = Math.ceil(filteredClients.length / itemsPerPage);
+  const paginatedClients = filteredClients.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-start justify-between sm:flex-row sm:items-center">
@@ -185,14 +199,12 @@ const Clients: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredClients.length === 0 ? (
+                  {paginatedClients.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-12 text-center text-gray-500">
-                        No clients found matching the filters.
-                      </td>
+                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500 font-medium">No clients found</td>
                     </tr>
                   ) : (
-                    filteredClients.map((client) => (
+                    paginatedClients.map((client) => (
                       <tr key={client.id} className="transition-colors hover:bg-gray-50">
                         <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-900 whitespace-nowrap sm:pl-6">
                           <Link to={`/clients/${client.id}`} className="text-indigo-600 hover:text-indigo-900 hover:underline">
@@ -270,6 +282,13 @@ const Clients: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={filteredClients.length}
+              itemsPerPage={itemsPerPage}
+            />
           </div>
         </div>
       </div>

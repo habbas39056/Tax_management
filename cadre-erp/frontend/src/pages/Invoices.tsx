@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { Dialog } from '@headlessui/react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import Pagination from '../components/Pagination';
 
 interface InvoiceItem {
   id: string;
@@ -23,6 +24,9 @@ const Invoices: React.FC = () => {
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Dynamic Invoice State
   const [formData, setFormData] = useState({
@@ -147,6 +151,17 @@ const Invoices: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
+  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
+  const paginatedInvoices = filteredInvoices.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   return (
     <div className="animate-fade space-y-8">
       <div className="flex flex-col items-start justify-between sm:flex-row sm:items-center">
@@ -203,12 +218,12 @@ const Invoices: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filteredInvoices.length === 0 ? (
+                {paginatedInvoices.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center text-gray-400 font-medium">No invoice records found matching the filters</td>
                   </tr>
                 ) : (
-                  filteredInvoices.map((inv) => (
+                  paginatedInvoices.map((inv) => (
                     <tr key={inv.id} className="hover:bg-gray-50/50 transition-colors">
                        <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -285,6 +300,13 @@ const Invoices: React.FC = () => {
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredInvoices.length}
+            itemsPerPage={itemsPerPage}
+          />
         </div>
       </div>
 

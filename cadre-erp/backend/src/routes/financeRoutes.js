@@ -8,6 +8,7 @@ const {
   deleteInvoice,
   getCommissions,
   recordPayment,
+  updatePayment,
   getPayments,
   deletePayment
 } = require('../controllers/financeController');
@@ -25,6 +26,7 @@ router.delete('/invoices/:id', authorizeRoles('Super Admin', 'Accounts'), delete
 // Payments
 router.get('/payments/:invoice_id', authorizeRoles('Super Admin', 'Accounts', 'Sales', 'Client'), getPayments);
 router.post('/payments', authorizeRoles('Super Admin', 'Accounts', 'Sales'), recordPayment);
+router.put('/payments/:id', authorizeRoles('Super Admin', 'Accounts', 'Sales'), updatePayment);
 router.delete('/payments/:id', authorizeRoles('Super Admin', 'Accounts'), deletePayment);
 
 // Commissions

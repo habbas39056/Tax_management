@@ -139,18 +139,6 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
           ))}
         </nav>
       </div>
-      
-      <div className="p-6 border-t border-gray-50 space-y-3">
-
-
-        <button 
-          onClick={logout}
-          className="flex w-full items-center px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl transition-all gap-3"
-        >
-          <LogOut size={18} />
-          Sign Out
-        </button>
-      </div>
     </div>
   );
 };

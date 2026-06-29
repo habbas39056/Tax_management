@@ -308,6 +308,38 @@ const recordPayment = async (req, res) => {
   }
 };
 
+const updatePayment = async (req, res) => {
+  const { id } = req.params;
+  const { amount, payment_date, payment_mode, bank, transaction_id, notes } = req.body;
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [payments] = await connection.query('SELECT invoice_id FROM invoice_payments WHERE id = ?', [id]);
+    if (payments.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: 'Payment not found' });
+    }
+    const invoiceId = payments[0].invoice_id;
+
+    await connection.query(
+      'UPDATE invoice_payments SET amount = ?, payment_date = ?, payment_mode = ?, bank = ?, transaction_id = ?, notes = ? WHERE id = ?',
+      [amount, payment_date, payment_mode, bank || null, transaction_id, notes, id]
+    );
+
+    await updateInvoiceStatus(invoiceId, connection);
+    await connection.commit();
+
+    res.json({ message: 'Payment updated' });
+  } catch (error) {
+    await connection.rollback();
+    console.error(error);
+    res.status(500).json({ message: 'Error updating payment' });
+  } finally {
+    connection.release();
+  }
+};
+
 const getPayments = async (req, res) => {
   try {
     const [payments] = await pool.query('SELECT * FROM invoice_payments WHERE invoice_id = ? ORDER BY payment_date DESC', [req.params.invoice_id]);
@@ -353,6 +385,7 @@ module.exports = {
   deleteInvoice,
   getCommissions,
   recordPayment,
+  updatePayment,
   getPayments,
   deletePayment
 };

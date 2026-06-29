@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { Dialog } from '@headlessui/react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import Pagination from '../components/Pagination';
 
 interface ProjectStep {
   title: string;
@@ -37,6 +38,9 @@ const Projects: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [serviceFilter, setServiceFilter] = useState('');
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const [formData, setFormData] = useState({ client_id: '', service_id: '', title: '', invoice_id: '', custom_service_name: '' });
 
@@ -177,6 +181,16 @@ const Projects: React.FC = () => {
     return matchesSearch && matchesStatus && matchesService;
   });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, serviceFilter]);
+
+  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage);
+  const paginatedProjects = filteredProjects.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const uniqueServices = Array.from(new Set(projects.map(p => p.service_name).filter(Boolean)));
 
   return (
@@ -235,10 +249,14 @@ const Projects: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredProjects.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-gray-500">No projects found matching the filters.</div>
+        {paginatedProjects.length === 0 ? (
+          <div className="col-span-full py-12 text-center text-gray-500">
+            <Folder className="mx-auto h-12 w-12 text-gray-300" />
+            <h3 className="mt-2 text-sm font-semibold text-gray-900">No projects</h3>
+            <p className="mt-1 text-sm text-gray-500">Get started by creating a new project.</p>
+          </div>
         ) : (
-          filteredProjects.map((project) => (
+          paginatedProjects.map((project) => (
             <Link key={project.id} to={`/projects/${project.id}`} className="block">
               <div className="overflow-hidden transition-all duration-200 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-indigo-500/50">
                 <div className="p-6 relative group">
@@ -324,6 +342,14 @@ const Projects: React.FC = () => {
           ))
         )}
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+        totalItems={filteredProjects.length}
+        itemsPerPage={itemsPerPage}
+      />
 
       <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />

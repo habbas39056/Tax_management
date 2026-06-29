@@ -4,6 +4,7 @@ import { Check, Pencil, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import Pagination from '../components/Pagination';
 
 const AVAILABLE_MODULES = ['Dashboard', 'Clients', 'Projects', 'Invoices', 'Cashbook', 'Commissions', 'Reports', 'AI Agents', 'Staff Management', 'Settings'];
 
@@ -13,6 +14,9 @@ const Staff: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   const [formData, setFormData] = useState({
     name: '',
@@ -80,6 +84,12 @@ const Staff: React.FC = () => {
       // toast error is handled in AuthContext
     }
   };
+
+  const totalPages = Math.ceil(users.length / itemsPerPage);
+  const paginatedUsers = users.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <div className="space-y-8 pb-12 bg-[#F8FAFC] min-h-screen -mx-8 -mt-8 pt-8">
@@ -171,12 +181,12 @@ const Staff: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {users.length === 0 ? (
+              {paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-16 text-center text-gray-400 text-sm font-medium">No employees found.</td>
+                  <td colSpan={6} className="px-6 py-16 text-center text-gray-400 text-sm font-medium">No employees found.</td>
                 </tr>
               ) : (
-                users.map(user => {
+                paginatedUsers.map(user => {
                   const accessList = typeof user.module_access === 'string' ? JSON.parse(user.module_access) : (user.module_access || []);
                   
                   return (
@@ -222,6 +232,13 @@ const Staff: React.FC = () => {
               )}
             </tbody>
           </table>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={users.length}
+            itemsPerPage={itemsPerPage}
+          />
         </div>
       </div>
     </div>
