@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Check, Pencil, Trash2 } from 'lucide-react';
+import { Check, Pencil, Trash2, Power, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -14,6 +14,7 @@ const Staff: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -65,13 +66,23 @@ const Staff: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to deactivate this employee?')) return;
+    if (!window.confirm('Are you sure you want to completely delete this employee?')) return;
     try {
       await api.delete(`/users/${id}`);
-      toast.success('Employee deactivated successfully');
+      toast.success('Employee deleted successfully');
       fetchData();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to deactivate employee');
+      toast.error(error.response?.data?.message || 'Failed to delete employee');
+    }
+  };
+
+  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      await api.patch(`/users/${id}/toggle-status`);
+      toast.success(`Employee ${currentStatus ? 'deactivated' : 'activated'} successfully`);
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to toggle status');
     }
   };
 
@@ -111,7 +122,16 @@ const Staff: React.FC = () => {
             </div>
             <div>
               <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Password *</label>
-              <input required type="password" name="password" value={formData.password} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm font-bold text-gray-900 outline-none focus:border-indigo-500 focus:bg-white transition-colors" />
+              <div className="relative">
+                <input required type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm font-bold text-gray-900 outline-none focus:border-indigo-500 focus:bg-white transition-colors pr-10" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Role</label>
@@ -216,13 +236,18 @@ const Staff: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <Link to={`/staff/${user.id}`} className="inline-flex items-center justify-center p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                          <Link to={`/staff/${user.id}`} className="inline-flex items-center justify-center p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit User">
                             <Pencil size={16} />
                           </Link>
                           {currentUser?.id !== user.id && (
-                            <button onClick={() => handleDelete(user.id)} className="inline-flex items-center justify-center p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Deactivate User">
-                              <Trash2 size={16} />
-                            </button>
+                            <>
+                              <button onClick={() => handleToggleStatus(user.id, user.is_active)} className={`inline-flex items-center justify-center p-2 ${user.is_active ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-50'} rounded-lg transition-colors`} title={user.is_active ? 'Deactivate User' : 'Activate User'}>
+                                <Power size={16} />
+                              </button>
+                              <button onClick={() => handleDelete(user.id)} className="inline-flex items-center justify-center p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete User">
+                                <Trash2 size={16} />
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>

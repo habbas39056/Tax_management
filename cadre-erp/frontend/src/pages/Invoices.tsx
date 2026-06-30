@@ -235,7 +235,7 @@ const Invoices: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         <button onClick={() => navigate(`/invoices/${inv.id}`)} className="font-mono text-xs text-indigo-600 hover:underline font-bold">
-                          #{inv.id.split('-')[0].toUpperCase()}
+                          #{inv.invoice_number || inv.id.split('-')[0].toUpperCase()}
                         </button>
                       </td>
                       <td className="px-6 py-4">

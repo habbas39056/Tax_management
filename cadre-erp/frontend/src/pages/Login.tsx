@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Eye, EyeOff } from 'lucide-react';
 
 const Login: React.FC = () => {
   const [isClientMode, setIsClientMode] = useState(false);
@@ -12,6 +13,9 @@ const Login: React.FC = () => {
   // Client State
   const [username, setUsername] = useState('');
   const [clientPassword, setClientPassword] = useState('');
+  
+  const [showStaffPassword, setShowStaffPassword] = useState(false);
+  const [showClientPassword, setShowClientPassword] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const { login, loginClient } = useAuth();
@@ -70,8 +74,15 @@ const Login: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Password</label>
-                  <div className="mt-1">
-                    <input required type="password" value={staffPassword} onChange={(e) => setStaffPassword(e.target.value)} className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm appearance-none focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm" />
+                  <div className="mt-1 relative">
+                    <input required type={showStaffPassword ? "text" : "password"} value={staffPassword} onChange={(e) => setStaffPassword(e.target.value)} className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm appearance-none focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm pr-10" />
+                    <button
+                      type="button"
+                      onClick={() => setShowStaffPassword(!showStaffPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      {showStaffPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
                 </div>
               </>
@@ -85,8 +96,15 @@ const Login: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Portal Password</label>
-                  <div className="mt-1">
-                    <input required type="password" value={clientPassword} onChange={(e) => setClientPassword(e.target.value)} className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm appearance-none focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm" />
+                  <div className="mt-1 relative">
+                    <input required type={showClientPassword ? "text" : "password"} value={clientPassword} onChange={(e) => setClientPassword(e.target.value)} className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm appearance-none focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm pr-10" />
+                    <button
+                      type="button"
+                      onClick={() => setShowClientPassword(!showClientPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      {showClientPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
                 </div>
               </>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
-import { User, Shield, Save, Upload, UserCircle } from 'lucide-react';
+import { User, Shield, Save, Upload, UserCircle, Eye, EyeOff } from 'lucide-react';
 
 const Settings: React.FC = () => {
   const { user, updateUser } = useAuth();
@@ -33,6 +33,9 @@ const Settings: React.FC = () => {
     password: '',
     confirmPassword: ''
   });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const isClient = user?.role === 'Client';
 
@@ -294,11 +297,29 @@ const Settings: React.FC = () => {
               <div className="grid grid-cols-1 gap-6 md:max-w-md">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-                  <input required type="password" name="password" value={securityData.password} onChange={handleSecurityChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" placeholder="Enter new password" />
+                  <div className="relative">
+                    <input required type={showPassword ? "text" : "password"} name="password" value={securityData.password} onChange={handleSecurityChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all pr-10" placeholder="Enter new password" />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
-                  <input required type="password" name="confirmPassword" value={securityData.confirmPassword} onChange={handleSecurityChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" placeholder="Confirm new password" />
+                  <div className="relative">
+                    <input required type={showConfirmPassword ? "text" : "password"} name="confirmPassword" value={securityData.confirmPassword} onChange={handleSecurityChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all pr-10" placeholder="Confirm new password" />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
               </div>
 

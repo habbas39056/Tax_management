@@ -115,11 +115,23 @@ const createInvoice = async (req, res) => {
   try {
     await connection.beginTransaction();
 
+    // Generate Invoice Number
+    let newInvoiceNumber = 'MOC0831-MR26';
+    const [lastInv] = await connection.query("SELECT invoice_number FROM invoices WHERE invoice_number LIKE 'MOC%-MR26' ORDER BY created_at DESC LIMIT 1");
+    if (lastInv.length > 0 && lastInv[0].invoice_number) {
+       const lastNumStr = lastInv[0].invoice_number.match(/MOC(\\d+)-MR26/);
+       if (lastNumStr && lastNumStr[1]) {
+          const nextNum = parseInt(lastNumStr[1], 10) + 1;
+          const paddedNum = nextNum.toString().padStart(4, '0');
+          newInvoiceNumber = `MOC${paddedNum}-MR26`;
+       }
+    }
+
     // 2. Create the invoice
     const [invResult] = await connection.query(`
-      INSERT INTO invoices (id, client_id, total_amount, service_charges_total, other_charges_total, items, discount, gst_rate, tax_amount, due_date, sales_user_id, bill_from_name, bill_from_address) 
-      VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [client_id, total_amount, service_charges_total, other_charges_total, JSON.stringify(parsedItems), discount, gst_rate, tax_amount || 0, formattedDueDate, sales_user_id, finalBillFromName, finalBillFromAddress]);
+      INSERT INTO invoices (id, invoice_number, client_id, total_amount, service_charges_total, other_charges_total, items, discount, gst_rate, tax_amount, due_date, sales_user_id, bill_from_name, bill_from_address) 
+      VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [newInvoiceNumber, client_id, total_amount, service_charges_total, other_charges_total, JSON.stringify(parsedItems), discount, gst_rate, tax_amount || 0, formattedDueDate, sales_user_id, finalBillFromName, finalBillFromAddress]);
     
     // Retrieve the UUID of the inserted invoice
     const [invRows] = await connection.query('SELECT id FROM invoices WHERE client_id = ? ORDER BY created_at DESC LIMIT 1', [client_id]);

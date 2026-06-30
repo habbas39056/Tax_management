@@ -8,7 +8,7 @@ const generatePassword = () => {
 
 const getClients = async (req, res) => {
   try {
-    let query = 'SELECT id, full_name, cnic, whatsapp_number, commission_rate, portal_username, sales_user_id, customer_type FROM clients ';
+    let query = 'SELECT id, full_name, cnic, whatsapp_number, commission_rate, portal_username, portal_password_plain, sales_user_id, customer_type FROM clients ';
     const params = [];
 
     // Sales agents only see their own clients
@@ -43,9 +43,9 @@ const createClient = async (req, res) => {
     const assigned_sales_id = req.user.role === 'Sales' ? req.user.id : sales_user_id;
 
     await pool.query(
-      `INSERT INTO clients (id, full_name, cnic, whatsapp_number, commission_rate, portal_username, portal_password_hash, sales_user_id, customer_type) 
-       VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [full_name, cnic, whatsapp_number, commission_rate || 0, portal_username, portal_password_hash, assigned_sales_id || null, customer_type || null]
+      `INSERT INTO clients (id, full_name, cnic, whatsapp_number, commission_rate, portal_username, portal_password_hash, portal_password_plain, sales_user_id, customer_type) 
+       VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [full_name, cnic, whatsapp_number, commission_rate || 0, portal_username, portal_password_hash, portal_password, assigned_sales_id || null, customer_type || null]
     );
 
     res.status(201).json({
@@ -67,7 +67,7 @@ const createClient = async (req, res) => {
 const getClientById = async (req, res) => {
   const { id } = req.params;
   try {
-    let query = 'SELECT id, full_name, cnic, whatsapp_number, commission_rate, portal_username, sales_user_id, customer_type FROM clients WHERE id = ?';
+    let query = 'SELECT id, full_name, cnic, whatsapp_number, commission_rate, portal_username, portal_password_plain, sales_user_id, customer_type FROM clients WHERE id = ?';
     const params = [id];
 
     if (req.user.role === 'Sales') {
@@ -104,8 +104,8 @@ const updateClient = async (req, res) => {
       const salt = await bcrypt.genSalt(10);
       const portal_password_hash = await bcrypt.hash(portal_password, salt);
       await pool.query(
-        'UPDATE clients SET full_name = ?, cnic = ?, whatsapp_number = ?, commission_rate = ?, portal_username = ?, portal_password_hash = ?, sales_user_id = ?, customer_type = ? WHERE id = ?',
-        [full_name, cnic, whatsapp_number, commission_rate || 0, portal_username, portal_password_hash, assigned_sales_id || null, customer_type || null, id]
+        'UPDATE clients SET full_name = ?, cnic = ?, whatsapp_number = ?, commission_rate = ?, portal_username = ?, portal_password_hash = ?, portal_password_plain = ?, sales_user_id = ?, customer_type = ? WHERE id = ?',
+        [full_name, cnic, whatsapp_number, commission_rate || 0, portal_username, portal_password_hash, portal_password, assigned_sales_id || null, customer_type || null, id]
       );
     } else {
       await pool.query(

@@ -16,6 +16,7 @@ interface Client {
   portal_username: string;
   sales_user_id?: string;
   customer_type?: string;
+  portal_password_plain?: string;
 }
 
 const Clients: React.FC = () => {
@@ -194,7 +195,7 @@ const Clients: React.FC = () => {
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Type</th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">CNIC</th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">WhatsApp</th>
-                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Portal User</th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Portal Credentials</th>
                     <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6"><span className="sr-only">Edit</span></th>
                   </tr>
                 </thead>
@@ -222,7 +223,12 @@ const Clients: React.FC = () => {
                         </td>
                         <td className="px-3 py-4 text-sm text-gray-500 whitespace-nowrap">{client.cnic}</td>
                         <td className="px-3 py-4 text-sm text-gray-500 whitespace-nowrap">{client.whatsapp_number}</td>
-                        <td className="px-3 py-4 text-sm text-gray-500 whitespace-nowrap">{client.portal_username}</td>
+                        <td className="px-3 py-4 text-sm text-gray-500 whitespace-nowrap">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs">User: <strong className="text-gray-900">{client.portal_username}</strong></span>
+                            {client.portal_password_plain && <span className="text-xs">Pass: <strong className="text-gray-900">{client.portal_password_plain}</strong></span>}
+                          </div>
+                        </td>
                         <td className="relative py-4 pl-3 pr-4 text-sm font-medium text-right whitespace-nowrap sm:pr-6">
                           <Menu as="div" className="relative inline-block text-left">
                             <div>

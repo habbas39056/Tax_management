@@ -227,15 +227,30 @@ const getProfile = async (req, res) => {
 const deleteUser = async (req, res) => {
   const { id } = req.params;
   try {
-    const [result] = await pool.query('UPDATE users SET is_active = 0 WHERE id = ? AND id != ?', [id, req.user.id]);
+    const [result] = await pool.query('DELETE FROM users WHERE id = ? AND id != ?', [id, req.user.id]);
     if (result.affectedRows === 0) {
       return res.status(400).json({ message: 'User not found or cannot delete yourself.' });
     }
-    res.json({ message: 'User deactivated successfully' });
+    res.json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error('Error deleting user:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-module.exports = { getRoles, getUsers, getStaffUsers, createUser, getUserById, updateUser, getUserActivity, getUserAssignments, updateProfile, getProfile, deleteUser };
+const toggleUserStatus = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [user] = await pool.query('SELECT is_active FROM users WHERE id = ? AND id != ?', [id, req.user.id]);
+    if (user.length === 0) return res.status(400).json({ message: 'User not found or cannot modify yourself.' });
+    
+    const newStatus = user[0].is_active ? 0 : 1;
+    await pool.query('UPDATE users SET is_active = ? WHERE id = ?', [newStatus, id]);
+    res.json({ message: `User ${newStatus ? 'activated' : 'deactivated'} successfully`, is_active: newStatus });
+  } catch (error) {
+    console.error('Error toggling user status:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+module.exports = { getRoles, getUsers, getStaffUsers, createUser, getUserById, updateUser, getUserActivity, getUserAssignments, updateProfile, getProfile, deleteUser, toggleUserStatus };

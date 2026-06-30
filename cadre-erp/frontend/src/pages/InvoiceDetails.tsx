@@ -463,7 +463,7 @@ const InvoiceDetails: React.FC = () => {
                   <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col scale-in duration-200">
                       <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                        <h2 className="text-xl font-black text-gray-900">Record Payment for INV-{invoice.id?.slice(0, 8)}</h2>
+                        <h2 className="text-xl font-black text-gray-900">Record Payment for {invoice.invoice_number || `INV-${invoice.id?.slice(0, 8)}`}</h2>
                         <button onClick={() => setShowPaymentModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
                           <Maximize2 size={20} />
                         </button>
@@ -626,7 +626,7 @@ const InvoiceDetails: React.FC = () => {
                   <div className="flex justify-between items-center border-b border-gray-100 pb-8">
                     <img src="/logo.png" alt="Logo" className="w-44 h-auto object-contain print-only" />
                     <div className="text-right">
-                      <h2 className="text-[24px] font-black text-indigo-600 uppercase tracking-tight">INV-{invoice.id?.slice(0, 8)}</h2>
+                      <h2 className="text-[24px] font-black text-indigo-600 uppercase tracking-tight">{invoice.invoice_number || `INV-${invoice.id?.slice(0, 8)}`}</h2>
                     </div>
                   </div>
 
