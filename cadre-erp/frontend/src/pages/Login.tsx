@@ -7,8 +7,8 @@ const Login: React.FC = () => {
   const [isClientMode, setIsClientMode] = useState(false);
   
   // Staff State
-  const [email, setEmail] = useState('admin@cadre.app');
-  const [staffPassword, setStaffPassword] = useState('Password123!');
+  const [email, setEmail] = useState('');
+  const [staffPassword, setStaffPassword] = useState('');
   
   // Client State
   const [username, setUsername] = useState('');

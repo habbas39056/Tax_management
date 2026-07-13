@@ -11,36 +11,7 @@ const AITools: React.FC = () => {
   const [progressText, setProgressText] = useState('');
   const [result, setResult] = useState<any>(null);
 
-  useEffect(() => {
-    let interval: any;
-    if (loading) {
-      setProgress(0);
-      setProgressText('Uploading document securely...');
-      interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev < 15) {
-            setProgressText('Uploading document securely...');
-            return prev + 1;
-          } else if (prev < 40) {
-            setProgressText('Reading and parsing pages...');
-            return prev + 1;
-          } else if (prev < 75) {
-            setProgressText('Extracting financial data...');
-            return prev + 1;
-          } else if (prev < 95) {
-            setProgressText('Generating AI insights...');
-            return prev + 1;
-          }
-          return 95; // Hold at 95% until API returns
-        });
-      }, 500); // Slow steady progress
-    } else {
-      if (interval) clearInterval(interval);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [loading]);
+  // Removed manual progress interval, now driven by backend polling
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -71,43 +42,65 @@ const AITools: React.FC = () => {
     }
 
     setLoading(true);
+    setProgress(5);
+    setProgressText('Uploading document securely...');
+
     try {
-      const response = await api.post('/ai/analyze-bank-statement', formData, {
-        timeout: 600000 // 10 minutes timeout for large PDFs (150+ pages)
-      });
-      
-      setProgress(100);
-      setProgressText('Finalizing report...');
-      
-      // Wait for a brief moment to show 100% before revealing result
-      setTimeout(() => {
-        setResult(response.data);
-        setLoading(false);
-        toast.success('Analysis complete!');
-      }, 800);
+      // 1. Start background job
+      const response = await api.post('/ai/analyze-bank-statement', formData);
+      const jobId = response.data.jobId;
+
+      if (!jobId) {
+        throw new Error('No Job ID received from server');
+      }
+
+      // 2. Poll for status
+      const pollStatus = async () => {
+        try {
+          const statusRes = await api.get(`/ai/analyze-status/${jobId}`);
+          const { status, progress: backendProgress, message, data, detail } = statusRes.data;
+
+          if (status === 'processing') {
+            if (backendProgress) setProgress(backendProgress);
+            if (message) setProgressText(message);
+            
+            // Wait 3 seconds and poll again
+            setTimeout(pollStatus, 3000);
+          } else if (status === 'completed') {
+            setProgress(100);
+            setProgressText('Finalizing report...');
+            setTimeout(() => {
+              setResult(data);
+              setLoading(false);
+              toast.success('Analysis complete!');
+            }, 800);
+          } else if (status === 'failed') {
+            setLoading(false);
+            toast.error(message || 'Analysis failed', { duration: 10000 });
+            if (detail) console.error('AI Detail:', detail);
+          }
+        } catch (pollError: any) {
+          console.error('Polling error:', pollError);
+          setLoading(false);
+          toast.error('Lost connection to server while polling status. Try refreshing the page.', { duration: 10000 });
+        }
+      };
+
+      // Start polling
+      setTimeout(pollStatus, 3000);
 
     } catch (error: any) {
       setLoading(false);
       
-      const toastConfig = { duration: 10000 }; // Show error for 10 seconds so user doesn't miss it
-
-      // Better error handling without changing logic
-      if (error.code === 'ECONNABORTED') {
-        toast.error('Request timeout. The PDF may be very large — please try again.', toastConfig);
-      } else if (error.response?.status === 502) {
-        toast.error('Server took too long processing the PDF. Please try again — large files need more time on first attempt.', toastConfig);
-      } else if (error.response?.status === 500) {
-        const serverMsg = error.response?.data?.message || 'Server error. Please ensure API key is configured correctly.';
-        const detail = error.response?.data?.detail || error.response?.data?.raw || '';
-        toast.error(`${serverMsg} ${detail}`, toastConfig);
-      } else if (error.response?.status === 413) {
+      const toastConfig = { duration: 10000 };
+      if (error.response?.status === 413) {
         toast.error('File too large. Please upload a smaller file.', toastConfig);
       } else if (!error.response) {
         toast.error('Network error. Please check if the server is running.', toastConfig);
       } else {
-        toast.error(error.response?.data?.message || 'Failed to analyze document. Ensure API key is set.', toastConfig);
+        toast.error(error.response?.data?.message || 'Failed to start analysis.', toastConfig);
       }
-      console.error('Analysis error:', error);
+      console.error('Analysis start error:', error);
     }
   };
 

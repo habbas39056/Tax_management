@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS clients (
     full_name VARCHAR(100) NOT NULL,
     cnic VARCHAR(20) UNIQUE,
     whatsapp_number VARCHAR(20),
+    email VARCHAR(255),
+    pin VARCHAR(50),
     commission_rate DECIMAL(5,2) DEFAULT 0,
     portal_username VARCHAR(100) UNIQUE,
     portal_password_hash VARCHAR(255)

@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { analyzeBankStatement, getKnowledge, addKnowledge, deleteKnowledge, getEvolutionStatus, generateEvolutionQR } = require('../controllers/aiController');
+const { analyzeBankStatement, getAnalysisStatus, getKnowledge, addKnowledge, deleteKnowledge, getEvolutionStatus, generateEvolutionQR } = require('../controllers/aiController');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 
 // Configure multer for PDF uploads
@@ -41,6 +41,7 @@ router.use(authenticateToken);
 
 // AI Tools Route
 router.post('/analyze-bank-statement', authorizeRoles('Super Admin', 'Operations'), upload.single('statement'), analyzeBankStatement);
+router.get('/analyze-status/:jobId', authorizeRoles('Super Admin', 'Operations'), getAnalysisStatus);
 
 // Knowledge Base Routes
 router.get('/knowledge', authorizeRoles('Super Admin', 'Operations'), getKnowledge);

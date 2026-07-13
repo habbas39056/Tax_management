@@ -23,7 +23,7 @@ export default function Client360() {
 
   // Form State
   const [formData, setFormData] = useState({
-    full_name: '', cnic: '', whatsapp_number: '', portal_username: '', portal_password: '', sales_user_id: '', commission_rate: 0, customer_type: ''
+    full_name: '', cnic: '', whatsapp_number: '', email: '', pin: '', portal_username: '', portal_password: '', sales_user_id: '', commission_rate: 0, customer_type: ''
   });
 
   // Notes Modal State
@@ -52,6 +52,8 @@ export default function Client360() {
         full_name: clientRes.data.full_name || '',
         cnic: clientRes.data.cnic || '',
         whatsapp_number: clientRes.data.whatsapp_number || '',
+        email: clientRes.data.email || '',
+        pin: clientRes.data.pin || '',
         portal_username: clientRes.data.portal_username || '',
         portal_password: '',
         sales_user_id: clientRes.data.sales_user_id || '',
@@ -208,6 +210,10 @@ export default function Client360() {
                 <input required type="text" value={formData.whatsapp_number} onChange={e => setFormData({...formData, whatsapp_number: e.target.value})} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700">Email Address</label>
+                <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700">Commission Rate (%)</label>
                 <input type="number" step="0.01" value={formData.commission_rate} onChange={e => setFormData({...formData, commission_rate: parseFloat(e.target.value)})} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
               </div>
@@ -224,10 +230,14 @@ export default function Client360() {
 
             <div className="pt-6 mt-6 border-t border-gray-100">
               <h4 className="text-sm font-bold text-gray-900 mb-4">Portal Credentials</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Portal Username</label>
                   <input required type="text" value={formData.portal_username} onChange={e => setFormData({...formData, portal_username: e.target.value})} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Portal PIN</label>
+                  <input type="text" value={formData.pin} onChange={e => setFormData({...formData, pin: e.target.value})} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">New Password (leave blank to keep current)</label>

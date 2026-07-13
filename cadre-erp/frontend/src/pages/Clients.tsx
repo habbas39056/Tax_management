@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, MoreVertical, Copy, Pencil, Eye } from 'lucide-react';
+import { Plus, Search, MoreVertical, Copy, Pencil, Eye, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Dialog, Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
@@ -13,6 +13,8 @@ interface Client {
   full_name: string;
   cnic: string;
   whatsapp_number: string;
+  email?: string;
+  pin?: string;
   portal_username: string;
   sales_user_id?: string;
   customer_type?: string;
@@ -36,6 +38,8 @@ const Clients: React.FC = () => {
     full_name: '',
     cnic: '',
     whatsapp_number: '',
+    email: '',
+    pin: '',
     portal_username: '',
     portal_password: '',
     sales_user_id: '',
@@ -45,6 +49,34 @@ const Clients: React.FC = () => {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
 
   const [agents, setAgents] = useState<any[]>([]);
+
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
+
+  const handleImportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) return;
+    setImporting(true);
+    setImportResult(null);
+
+    const fd = new FormData();
+    fd.append('file', importFile);
+
+    try {
+      const res = await api.post('/clients/import', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success('Clients imported successfully!');
+      setImportResult(res.data.summary);
+      fetchClients();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to import clients');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const fetchClients = async () => {
     try {
@@ -89,7 +121,7 @@ const Clients: React.FC = () => {
       setIsModalOpen(false);
       setEditingClient(null);
       setShowCustomType(false);
-      setFormData({ full_name: '', cnic: '', whatsapp_number: '', portal_username: '', portal_password: '', sales_user_id: '', customer_type: '' });
+      setFormData({ full_name: '', cnic: '', whatsapp_number: '', email: '', pin: '', portal_username: '', portal_password: '', sales_user_id: '', customer_type: '' });
       fetchClients();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to save client');
@@ -100,7 +132,7 @@ const Clients: React.FC = () => {
 
   const openAddModal = () => {
     setEditingClient(null);
-    setFormData({ full_name: '', cnic: '', whatsapp_number: '', portal_username: '', portal_password: '', sales_user_id: '', customer_type: '' });
+    setFormData({ full_name: '', cnic: '', whatsapp_number: '', email: '', pin: '', portal_username: '', portal_password: '', sales_user_id: '', customer_type: '' });
     setShowCustomType(false);
     setIsModalOpen(true);
   };
@@ -111,6 +143,8 @@ const Clients: React.FC = () => {
       full_name: client.full_name,
       cnic: client.cnic,
       whatsapp_number: client.whatsapp_number,
+      email: client.email || '',
+      pin: client.pin || '',
       portal_username: client.portal_username,
       portal_password: '', // Don't pre-fill password for security/UX
       sales_user_id: client.sales_user_id || '',
@@ -145,12 +179,23 @@ const Clients: React.FC = () => {
         <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
           Client Management
         </h2>
-        <div className="flex mt-4 sm:ml-4 sm:mt-0">
+        <div className="flex mt-4 sm:ml-4 sm:mt-0 gap-3">
+          <button
+            onClick={() => {
+              setImportFile(null);
+              setImportResult(null);
+              setIsImportModalOpen(true);
+            }}
+            className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 transition-colors duration-200 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          >
+            <Upload className="w-4 h-4 mr-2 text-gray-500" />
+            Import Excel
+          </button>
           <button
             onClick={openAddModal}
             className="inline-flex items-center px-4 py-2 text-sm font-medium text-white transition-colors duration-200 bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
-            <Plus className="w-5 h-5 mr-2 -ml-1" />
+            <Plus className="w-4 h-4 mr-2" />
             Add New Client
           </button>
         </div>
@@ -195,6 +240,7 @@ const Clients: React.FC = () => {
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Type</th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">CNIC</th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">WhatsApp</th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Email</th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Portal Credentials</th>
                     <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6"><span className="sr-only">Edit</span></th>
                   </tr>
@@ -202,7 +248,7 @@ const Clients: React.FC = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedClients.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500 font-medium">No clients found</td>
+                      <td colSpan={8} className="px-6 py-8 text-center text-gray-500 font-medium">No clients found</td>
                     </tr>
                   ) : (
                     paginatedClients.map((client) => (
@@ -223,10 +269,12 @@ const Clients: React.FC = () => {
                         </td>
                         <td className="px-3 py-4 text-sm text-gray-500 whitespace-nowrap">{client.cnic}</td>
                         <td className="px-3 py-4 text-sm text-gray-500 whitespace-nowrap">{client.whatsapp_number}</td>
+                        <td className="px-3 py-4 text-sm text-gray-500 whitespace-nowrap">{client.email || <span className="text-gray-400 italic text-xs">None</span>}</td>
                         <td className="px-3 py-4 text-sm text-gray-500 whitespace-nowrap">
-                          <div className="flex flex-col gap-1">
+                          <div className="flex flex-col gap-0.5">
                             <span className="text-xs">User: <strong className="text-gray-900">{client.portal_username}</strong></span>
                             {client.portal_password_plain && <span className="text-xs">Pass: <strong className="text-gray-900">{client.portal_password_plain}</strong></span>}
+                            {client.pin && <span className="text-xs">PIN: <strong className="text-gray-900">{client.pin}</strong></span>}
                           </div>
                         </td>
                         <td className="relative py-4 pl-3 pr-4 text-sm font-medium text-right whitespace-nowrap sm:pr-6">
@@ -350,30 +398,40 @@ const Clients: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700">CNIC Number</label>
                 <input required type="text" name="cnic" value={formData.cnic} onChange={handleInputChange} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm" placeholder="12345-1234567-1" />
               </div>
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">WhatsApp Number</label>
                   <input required type="text" name="whatsapp_number" value={formData.whatsapp_number} onChange={handleInputChange} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm" placeholder="+923001234567" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Assign Sales Agent</label>
-                  <select name="sales_user_id" value={formData.sales_user_id} onChange={handleInputChange} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm">
-                    <option value="">No Agent (Admin Managed)</option>
-                    {agents.map(a => <option key={a.id} value={a.id}>{a.name} ({a.username})</option>)}
-                  </select>
+                  <label className="block text-sm font-medium text-gray-700">Email Address</label>
+                  <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm" placeholder="client@example.com" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Assign Sales Agent</label>
+                <select name="sales_user_id" value={formData.sales_user_id} onChange={handleInputChange} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+                  <option value="">No Agent (Admin Managed)</option>
+                  {agents.map(a => <option key={a.id} value={a.id}>{a.name} ({a.username})</option>)}
+                </select>
               </div>
               
               <div className="pt-4 mt-2 border-t border-gray-200">
                 <h4 className="mb-3 text-sm font-semibold text-gray-900">Portal Credentials</h4>
                 <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Portal Username</label>
-                    <input required type="text" name="portal_username" value={formData.portal_username} onChange={handleInputChange} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm" placeholder="clientusername" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Portal Username</label>
+                      <input required type="text" name="portal_username" value={formData.portal_username} onChange={handleInputChange} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm" placeholder="clientusername" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Portal PIN</label>
+                      <input type="text" name="pin" value={formData.pin} onChange={handleInputChange} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm" placeholder="1234" />
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Portal Password {editingClient && <span className="text-xs text-gray-400 font-normal">(Leave blank to keep unchanged)</span>}</label>
-                    <input required={!editingClient} type="text" name="portal_password" value={formData.portal_password} onChange={handleInputChange} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm" placeholder={editingClient ? 'Leave blank to keep current' : 'CustomPassword123!'} />
+                    <label className="block text-sm font-medium text-gray-700">Portal Password {editingClient && <span className="text-xs text-gray-400 font-normal">(Leave blank)</span>}</label>
+                    <input required={!editingClient} type="text" name="portal_password" value={formData.portal_password} onChange={handleInputChange} className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm" placeholder={editingClient ? 'Leave blank' : 'CustomPassword123!'} />
                   </div>
                 </div>
               </div>
@@ -382,6 +440,53 @@ const Clients: React.FC = () => {
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Cancel</button>
                 <button type="submit" disabled={loading} className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                   {loading ? 'Saving...' : (editingClient ? 'Save Changes' : 'Create Client')}
+                </button>
+              </div>
+            </form>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
+
+      {/* Import Clients Modal */}
+      <Dialog open={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} className="relative z-50">
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="w-full max-w-md p-6 bg-white rounded-xl shadow-2xl">
+            <Dialog.Title className="text-xl font-bold text-gray-900 mb-2">Import Clients from Excel</Dialog.Title>
+            <p className="text-xs text-gray-500 mb-4 font-medium">
+              Supported columns: <strong className="text-gray-700 font-semibold">Full Name</strong> (Required), <strong className="text-gray-700 font-semibold">CNIC</strong>, <strong className="text-gray-700 font-semibold">WhatsApp</strong>, <strong className="text-gray-700 font-semibold">Email</strong>, <strong className="text-gray-700 font-semibold">Customer Type</strong>, <strong className="text-gray-700 font-semibold">Portal Username</strong>, <strong className="text-gray-700 font-semibold">Portal Password</strong>, <strong className="text-gray-700 font-semibold">Portal PIN</strong>.
+            </p>
+            <form onSubmit={handleImportSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-750">Select File (.xlsx, .xls, .csv)</label>
+                <input 
+                  required 
+                  type="file" 
+                  accept=".xlsx, .xls, .csv" 
+                  onChange={(e) => setImportFile(e.target.files?.[0] || null)} 
+                  className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm font-semibold text-gray-900"
+                />
+              </div>
+
+              {importResult && (
+                <div className="p-3 bg-gray-55 rounded-lg text-xs space-y-1 max-h-48 overflow-y-auto border border-gray-200">
+                  <h5 className="font-semibold text-gray-900">Result Summary:</h5>
+                  <p className="text-green-600 font-semibold">Successfully Imported: {importResult.successCount}</p>
+                  <p className="text-yellow-600 font-semibold">Skipped/Errors: {importResult.skipCount}</p>
+                  {importResult.errors.length > 0 && (
+                    <div className="mt-2 text-red-500 space-y-0.5 font-medium">
+                      {importResult.errors.map((err: string, i: number) => (
+                        <p key={i}>• {err}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2 space-x-3">
+                <button type="button" onClick={() => setIsImportModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Cancel</button>
+                <button type="submit" disabled={importing || !importFile} className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                  {importing ? 'Importing...' : 'Upload & Import'}
                 </button>
               </div>
             </form>

@@ -3,11 +3,34 @@ const db = require('../config/db');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { GoogleAIFileManager } = require('@google/generative-ai/server');
 
+// In-memory store for background jobs
+const activeJobs = {};
+
+const getAnalysisStatus = (req, res) => {
+  const { jobId } = req.params;
+  const job = activeJobs[jobId];
+
+  if (!job) {
+    return res.status(404).json({ message: 'Job not found or expired' });
+  }
+
+  if (job.status === 'completed') {
+    // Send data and delete job to free memory
+    res.json({ status: 'completed', data: job.data });
+    delete activeJobs[jobId];
+  } else if (job.status === 'failed') {
+    res.status(500).json({ status: 'failed', message: job.error, detail: job.detail });
+    delete activeJobs[jobId];
+  } else {
+    res.json({ status: 'processing', progress: job.progress || 0, message: job.message || 'Processing...' });
+  }
+};
+
 const analyzeBankStatement = async (req, res) => {
   let filePath = null;
 
   try {
-    console.log('=== Bank Statement Analysis Started ===');
+    console.log('=== Bank Statement Analysis Job Started ===');
 
     if (!req.file) {
       console.log('No file uploaded');
@@ -33,6 +56,32 @@ const analyzeBankStatement = async (req, res) => {
       return res.status(500).json({ message: 'GEMINI_API_KEY is not configured in .env file' });
     }
 
+    // Generate unique job ID
+    const jobId = Date.now().toString() + Math.random().toString(36).substring(2, 9);
+    activeJobs[jobId] = { status: 'processing', progress: 5, message: 'Uploading document securely...' };
+
+    // Respond immediately to avoid 504 timeout
+    res.status(202).json({ 
+      message: 'Analysis started in the background', 
+      jobId 
+    });
+
+    // Start background processing without awaiting
+    processBankStatementAsync(jobId, filePath, req.file.size, instructions, apiKey).catch(err => {
+      console.error('Unhandled error in background job:', err);
+    });
+
+  } catch (error) {
+    console.error('Error starting analysis job:', error);
+    if (filePath && fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    res.status(500).json({ message: 'Failed to start analysis job', error: error.message });
+  }
+};
+
+const processBankStatementAsync = async (jobId, filePath, fileSize, instructions, apiKey) => {
+  try {
     let prompt = `You are a professional financial analyst specializing in Pakistani bank statements. I am providing you with a bank statement PDF.
 
 IMPORTANT: Bank statements come in many different formats. Some have clear "Credit" and "Debit" columns, but many do NOT. You must handle ALL formats including:
@@ -107,7 +156,9 @@ CRITICAL RULES:
     }
 
     let parts = [];
-    const fileSizeMB = req.file.size / (1024 * 1024);
+    const fileSizeMB = fileSize / (1024 * 1024);
+
+    activeJobs[jobId] = { status: 'processing', progress: 15, message: 'Reading and parsing pages...' };
 
     if (fileSizeMB < 18) {
       console.log(`File size is ${fileSizeMB.toFixed(2)}MB. Sending inline for fast processing...`);
@@ -136,6 +187,8 @@ CRITICAL RULES:
       let fileInfo = uploadResult.file;
       console.log('Initial file state:', fileState);
       
+      activeJobs[jobId] = { status: 'processing', progress: 40, message: 'Extracting financial data...' };
+
       while (fileState === 'PROCESSING') {
         console.log('File still processing, waiting 5 seconds...');
         await new Promise(resolve => setTimeout(resolve, 5000));
@@ -149,7 +202,8 @@ CRITICAL RULES:
         if (filePath && fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
         }
-        return res.status(400).json({ message: 'Failed to process PDF. The file may be too large or corrupted.' });
+        activeJobs[jobId] = { status: 'failed', error: 'Failed to process PDF. The file may be too large or corrupted.' };
+        return;
       }
 
       console.log('File is ACTIVE and ready for analysis');
@@ -166,6 +220,7 @@ CRITICAL RULES:
 
     // 3. Call Gemini SDK
     console.log('Calling Gemini API...');
+    activeJobs[jobId] = { status: 'processing', progress: 75, message: 'Generating AI insights...' };
     const genAI = new GoogleGenerativeAI(apiKey);
     
     // We use gemini-2.5-flash as originally configured
@@ -184,6 +239,8 @@ CRITICAL RULES:
     });
 
     console.log('Gemini API response received');
+    activeJobs[jobId] = { status: 'processing', progress: 95, message: 'Finalizing report...' };
+    
     const textResponse = result.response.text();
     console.log('Gemini response text length:', textResponse?.length || 0);
 
@@ -192,7 +249,8 @@ CRITICAL RULES:
       if (filePath && fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
-      return res.status(500).json({ message: 'Unexpected response from Gemini AI' });
+      activeJobs[jobId] = { status: 'failed', error: 'Unexpected response from Gemini AI' };
+      return;
     }
 
     // Parse JSON from response
@@ -237,10 +295,12 @@ CRITICAL RULES:
       if (filePath && fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
-      return res.status(500).json({
-        message: 'AI returned invalid JSON structure',
-        raw: textResponse.substring(0, 500)
-      });
+      activeJobs[jobId] = { 
+        status: 'failed', 
+        error: 'AI returned invalid JSON structure', 
+        detail: textResponse.substring(0, 500) 
+      };
+      return;
     }
 
     // Clean up the uploaded file
@@ -250,7 +310,9 @@ CRITICAL RULES:
     }
 
     console.log('=== Analysis Complete ===');
-    res.json(parsedData);
+    
+    // Save successful data to job
+    activeJobs[jobId] = { status: 'completed', data: parsedData };
 
   } catch (error) {
     console.error('=== AI Analysis Error ===');
@@ -269,23 +331,20 @@ CRITICAL RULES:
     }
 
     // Send appropriate error response
+    let errorMsg = 'An error occurred during statement analysis';
+    let detail = error.message;
+
     if (error.message.includes('pdf-parse') || error.message.includes('PDF')) {
-      res.status(400).json({
-        message: 'Failed to parse PDF file. Please ensure it is a valid bank statement.',
-        detail: error.message
-      });
+      errorMsg = 'Failed to parse PDF file. Please ensure it is a valid bank statement.';
     } else if (error.message.includes('fetch')) {
-      res.status(500).json({
-        message: 'Network error while contacting AI service',
-        detail: error.message
-      });
-    } else {
-      res.status(500).json({
-        message: 'An error occurred during statement analysis',
-        detail: error.message,
-        errorType: error.name
-      });
+      errorMsg = 'Network error while contacting AI service';
     }
+
+    activeJobs[jobId] = { 
+      status: 'failed', 
+      error: errorMsg,
+      detail: detail
+    };
   }
 };
 
@@ -390,4 +449,4 @@ const generateEvolutionQR = async (req, res) => {
   }
 };
 
-module.exports = { analyzeBankStatement, getKnowledge, addKnowledge, deleteKnowledge, getEvolutionStatus, generateEvolutionQR };
+module.exports = { analyzeBankStatement, getAnalysisStatus, getKnowledge, addKnowledge, deleteKnowledge, getEvolutionStatus, generateEvolutionQR };

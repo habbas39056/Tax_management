@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
+const XLSX = require('xlsx');
 
 // Helper to generate a random password
 const generatePassword = () => {
@@ -8,7 +9,7 @@ const generatePassword = () => {
 
 const getClients = async (req, res) => {
   try {
-    let query = 'SELECT id, full_name, cnic, whatsapp_number, commission_rate, portal_username, portal_password_plain, sales_user_id, customer_type FROM clients ';
+    let query = 'SELECT id, full_name, cnic, whatsapp_number, email, pin, commission_rate, portal_username, portal_password_plain, sales_user_id, customer_type FROM clients ';
     const params = [];
 
     // Sales agents only see their own clients
@@ -28,7 +29,7 @@ const getClients = async (req, res) => {
 };
 
 const createClient = async (req, res) => {
-  const { full_name, cnic, whatsapp_number, commission_rate, portal_username, portal_password, sales_user_id, customer_type } = req.body;
+  const { full_name, cnic, whatsapp_number, email, pin, commission_rate, portal_username, portal_password, sales_user_id, customer_type } = req.body;
 
   try {
     if (!portal_username || !portal_password) {
@@ -43,9 +44,9 @@ const createClient = async (req, res) => {
     const assigned_sales_id = req.user.role === 'Sales' ? req.user.id : sales_user_id;
 
     await pool.query(
-      `INSERT INTO clients (id, full_name, cnic, whatsapp_number, commission_rate, portal_username, portal_password_hash, portal_password_plain, sales_user_id, customer_type) 
-       VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [full_name, cnic, whatsapp_number, commission_rate || 0, portal_username, portal_password_hash, portal_password, assigned_sales_id || null, customer_type || null]
+      `INSERT INTO clients (id, full_name, cnic, whatsapp_number, email, pin, commission_rate, portal_username, portal_password_hash, portal_password_plain, sales_user_id, customer_type) 
+       VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [full_name, cnic, whatsapp_number, email || null, pin || null, commission_rate || 0, portal_username, portal_password_hash, portal_password, assigned_sales_id || null, customer_type || null]
     );
 
     res.status(201).json({
@@ -67,7 +68,7 @@ const createClient = async (req, res) => {
 const getClientById = async (req, res) => {
   const { id } = req.params;
   try {
-    let query = 'SELECT id, full_name, cnic, whatsapp_number, commission_rate, portal_username, portal_password_plain, sales_user_id, customer_type FROM clients WHERE id = ?';
+    let query = 'SELECT id, full_name, cnic, whatsapp_number, email, pin, commission_rate, portal_username, portal_password_plain, sales_user_id, customer_type FROM clients WHERE id = ?';
     const params = [id];
 
     if (req.user.role === 'Sales') {
@@ -90,7 +91,7 @@ const getClientById = async (req, res) => {
 
 const updateClient = async (req, res) => {
   const { id } = req.params;
-  const { full_name, cnic, whatsapp_number, commission_rate, portal_username, portal_password, sales_user_id, customer_type } = req.body;
+  const { full_name, cnic, whatsapp_number, email, pin, commission_rate, portal_username, portal_password, sales_user_id, customer_type } = req.body;
 
   try {
     if (req.user.role === 'Sales') {
@@ -104,13 +105,13 @@ const updateClient = async (req, res) => {
       const salt = await bcrypt.genSalt(10);
       const portal_password_hash = await bcrypt.hash(portal_password, salt);
       await pool.query(
-        'UPDATE clients SET full_name = ?, cnic = ?, whatsapp_number = ?, commission_rate = ?, portal_username = ?, portal_password_hash = ?, portal_password_plain = ?, sales_user_id = ?, customer_type = ? WHERE id = ?',
-        [full_name, cnic, whatsapp_number, commission_rate || 0, portal_username, portal_password_hash, portal_password, assigned_sales_id || null, customer_type || null, id]
+        'UPDATE clients SET full_name = ?, cnic = ?, whatsapp_number = ?, email = ?, pin = ?, commission_rate = ?, portal_username = ?, portal_password_hash = ?, portal_password_plain = ?, sales_user_id = ?, customer_type = ? WHERE id = ?',
+        [full_name, cnic, whatsapp_number, email || null, pin || null, commission_rate || 0, portal_username, portal_password_hash, portal_password, assigned_sales_id || null, customer_type || null, id]
       );
     } else {
       await pool.query(
-        'UPDATE clients SET full_name = ?, cnic = ?, whatsapp_number = ?, commission_rate = ?, portal_username = ?, sales_user_id = ?, customer_type = ? WHERE id = ?',
-        [full_name, cnic, whatsapp_number, commission_rate || 0, portal_username, assigned_sales_id || null, customer_type || null, id]
+        'UPDATE clients SET full_name = ?, cnic = ?, whatsapp_number = ?, email = ?, pin = ?, commission_rate = ?, portal_username = ?, sales_user_id = ?, customer_type = ? WHERE id = ?',
+        [full_name, cnic, whatsapp_number, email || null, pin || null, commission_rate || 0, portal_username, assigned_sales_id || null, customer_type || null, id]
       );
     }
 
@@ -196,4 +197,124 @@ const getClientPayments = async (req, res) => {
   }
 };
 
-module.exports = { getClients, createClient, getClientById, updateClient, getClientNotes, createClientNote, updateClientNote, deleteClientNote, getClientPayments };
+const generateUsername = (fullName) => {
+  const base = fullName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15);
+  const random = Math.floor(1000 + Math.random() * 9000);
+  return `${base}${random}`;
+};
+
+const importClients = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded' });
+  }
+
+  const fs = require('fs');
+  try {
+    const workbook = XLSX.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const data = XLSX.utils.sheet_to_json(sheet);
+
+    if (data.length === 0) {
+      return res.status(400).json({ message: 'Uploaded sheet is empty' });
+    }
+
+    let successCount = 0;
+    let skipCount = 0;
+    const errors = [];
+
+    // Auto-assign to current user if they are Sales
+    const assigned_sales_id = req.user.role === 'Sales' ? req.user.id : null;
+
+    for (let index = 0; index < data.length; index++) {
+      const row = data[index];
+      
+      // Find keys case-insensitively
+      const getVal = (possibleKeys) => {
+        const key = Object.keys(row).find(k => possibleKeys.includes(k.toLowerCase().trim().replace(/[\s_-]+/g, '')));
+        return key ? String(row[key]).trim() : '';
+      };
+
+      const full_name = getVal(['fullname', 'name', 'clientname']);
+      const cnic = getVal(['cnic', 'cnicnumber', 'cnicno']);
+      const whatsapp_number = getVal(['whatsapp', 'whatsappnumber', 'whatsappno', 'phone', 'contact']);
+      const email = getVal(['email', 'emailaddress', 'mail']);
+      const customer_type = getVal(['customertype', 'type', 'clienttype']);
+      let portal_username = getVal(['portalusername', 'username', 'portaluser']);
+      let portal_password = getVal(['portalpassword', 'password', 'portalpass']);
+      const pin = getVal(['portalpin', 'pin', 'pincode']);
+
+      if (!full_name) {
+        errors.push(`Row ${index + 2}: Full Name is missing.`);
+        skipCount++;
+        continue;
+      }
+
+      // If portal username/password are empty, generate them
+      if (!portal_username) {
+        portal_username = generateUsername(full_name);
+      }
+      if (!portal_password) {
+        portal_password = generatePassword();
+      }
+
+      // Check if CNIC already exists in DB
+      if (cnic) {
+        const [existingCnic] = await pool.query('SELECT id FROM clients WHERE cnic = ?', [cnic]);
+        if (existingCnic.length > 0) {
+          errors.push(`Row ${index + 2} (${full_name}): CNIC ${cnic} already exists in database.`);
+          skipCount++;
+          continue;
+        }
+      }
+
+      // Check if username already exists in DB
+      const [existingUser] = await pool.query('SELECT id FROM clients WHERE portal_username = ?', [portal_username]);
+      if (existingUser.length > 0) {
+        portal_username = generateUsername(full_name);
+      }
+
+      // Hash password
+      const salt = await bcrypt.genSalt(10);
+      const portal_password_hash = await bcrypt.hash(portal_password, salt);
+
+      try {
+        await pool.query(
+          `INSERT INTO clients (id, full_name, cnic, whatsapp_number, email, pin, commission_rate, portal_username, portal_password_hash, portal_password_plain, sales_user_id, customer_type) 
+           VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [full_name, cnic || null, whatsapp_number || null, email || null, pin || null, 0, portal_username, portal_password_hash, portal_password, assigned_sales_id, customer_type || null]
+        );
+        successCount++;
+      } catch (insertError) {
+        console.error('Error inserting row:', insertError);
+        errors.push(`Row ${index + 2} (${full_name}): ${insertError.message}`);
+        skipCount++;
+      }
+    }
+
+    res.json({
+      message: 'Import process finished',
+      summary: {
+        totalRows: data.length,
+        successCount,
+        skipCount,
+        errors
+      }
+    });
+
+  } catch (error) {
+    console.error('Excel Import Error:', error);
+    res.status(500).json({ message: 'Error processing Excel file: ' + error.message });
+  } finally {
+    // Delete file after processing
+    if (req.file && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (err) {
+        console.error('Failed to delete temp file:', err);
+      }
+    }
+  }
+};
+
+module.exports = { getClients, createClient, getClientById, updateClient, getClientNotes, createClientNote, updateClientNote, deleteClientNote, getClientPayments, importClients };

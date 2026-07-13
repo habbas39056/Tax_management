@@ -54,6 +54,7 @@ const getInvoices = async (req, res) => {
     res.json(invoices);
   } catch (error) {
     console.error('Error in getInvoices:', error);
+    require('fs').appendFileSync('C:\\Users\\MM COMPUTERS\\OneDrive\\Desktop\\TAX SOFTWARE\\error.log', new Date().toISOString() + ' GET Invoices Error: ' + error.stack + '\n');
     res.status(500).json({ message: 'Error fetching invoices', error: error.message });
   }
 };

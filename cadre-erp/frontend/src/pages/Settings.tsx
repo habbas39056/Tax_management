@@ -7,7 +7,7 @@ import { User, Shield, Save, Upload, UserCircle, Eye, EyeOff } from 'lucide-reac
 const Settings: React.FC = () => {
   const { user, updateUser } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'services'>('profile');
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -36,6 +36,11 @@ const Settings: React.FC = () => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Services State
+  const [services, setServices] = useState<{id: string, name: string}[]>([]);
+  const [newServiceName, setNewServiceName] = useState('');
+  const [loadingServices, setLoadingServices] = useState(false);
 
   const isClient = user?.role === 'Client';
 
@@ -85,6 +90,24 @@ const Settings: React.FC = () => {
     };
     if (user?.id) fetchProfile();
   }, [user]);
+
+  const fetchServices = async () => {
+    try {
+      setLoadingServices(true);
+      const res = await api.get('/projects/services');
+      setServices(res.data);
+    } catch (error) {
+      toast.error('Failed to load services');
+    } finally {
+      setLoadingServices(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'services' && !isClient) {
+      fetchServices();
+    }
+  }, [activeTab, isClient]);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setProfileData({ ...profileData, [e.target.name]: e.target.value });
@@ -180,6 +203,23 @@ const Settings: React.FC = () => {
     }
   };
 
+  const handleAddService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newServiceName.trim()) return;
+    
+    try {
+      setLoading(true);
+      await api.post('/projects/services', { name: newServiceName });
+      toast.success('Service added successfully');
+      setNewServiceName('');
+      fetchServices();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Error adding service');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex flex-col items-start justify-between sm:flex-row sm:items-center mb-6">
@@ -208,6 +248,17 @@ const Settings: React.FC = () => {
             <Shield className="inline-block w-4 h-4 mr-2" />
             Security
           </button>
+          {!isClient && (
+            <button
+              onClick={() => setActiveTab('services')}
+              className={`flex-1 py-4 px-6 text-sm font-medium text-center border-b-2 transition-colors ${
+                activeTab === 'services' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Save className="inline-block w-4 h-4 mr-2" />
+              Services
+            </button>
+          )}
         </div>
 
         <div className="p-6 md:p-8">
@@ -290,7 +341,7 @@ const Settings: React.FC = () => {
                 </button>
               </div>
             </form>
-          ) : (
+          ) : activeTab === 'security' ? (
             <form onSubmit={saveSecurity} className="space-y-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Update Password</h3>
               
@@ -330,7 +381,48 @@ const Settings: React.FC = () => {
                 </button>
               </div>
             </form>
-          )}
+          ) : activeTab === 'services' && !isClient ? (
+            <div className="space-y-8">
+              <form onSubmit={handleAddService} className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Service</h3>
+                <div className="flex gap-4">
+                  <input
+                    required
+                    type="text"
+                    value={newServiceName}
+                    onChange={(e) => setNewServiceName(e.target.value)}
+                    placeholder="Enter service name (e.g. Audit, Tax Filing)"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={loading || !newServiceName.trim()}
+                    className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 transition-all disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    {loading ? 'Adding...' : 'Add Service'}
+                  </button>
+                </div>
+              </form>
+
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Existing Services</h3>
+                {loadingServices ? (
+                  <p className="text-gray-500">Loading services...</p>
+                ) : services.length === 0 ? (
+                  <p className="text-gray-500 italic">No services added yet.</p>
+                ) : (
+                  <ul className="divide-y divide-gray-200 border border-gray-200 rounded-xl overflow-hidden">
+                    {services.map(service => (
+                      <li key={service.id} className="p-4 hover:bg-gray-50 transition-colors">
+                        <span className="font-medium text-gray-900">{service.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
